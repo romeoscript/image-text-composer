@@ -1,18 +1,21 @@
 import React from 'react';
-import { useCanvas } from '../../hooks/useCanvas';
+import { CanvasState } from '../../lib/utils/types';
 
 interface CanvasProps {
   className?: string;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  canvasState: CanvasState;
+  updateCanvasSize: (width: number, height: number) => void;
+  setBackgroundColor: (color: string) => void;
 }
 
-export const Canvas: React.FC<CanvasProps> = ({ className = '' }) => {
-  const {
-    canvasRef,
-    canvasState,
-    updateCanvasSize,
-    setBackgroundColor,
-  } = useCanvas();
-
+export const Canvas: React.FC<CanvasProps> = ({ 
+  className = '', 
+  canvasRef, 
+  canvasState, 
+  updateCanvasSize, 
+  setBackgroundColor 
+}) => {
   return (
     <div className={`flex-1 bg-gray-100 p-4 ${className}`}>
       <div className="bg-white rounded-lg shadow-lg p-4">

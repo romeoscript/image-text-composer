@@ -1,41 +1,31 @@
 import React, { useState } from 'react';
-import { 
-  Undo2, 
-  Redo2, 
-  Download, 
-  Save, 
-  Plus, 
-  Trash2, 
-  Image as ImageIcon,
-  Type,
-  Shapes
-} from 'lucide-react';
 import { Button } from '../UI/Button';
-import { ImageUploadModal } from '../Modals/ImageUploadModal';
-import { useCanvas } from '../../hooks/useCanvas';
-import { useHistory } from '../../hooks/useHistory';
+import { Undo2, Redo2, Type, Image as ImageIcon, Square, Trash2, Save, Download } from 'lucide-react';
 import { generateId } from '../../lib/utils/helpers';
-import { DEFAULT_TEXT_LAYER, DEFAULT_FONT_FAMILY } from '../../lib/utils/constants';
 import { TextLayer, ImageLayer, ShapeLayer } from '../../lib/utils/types';
+import { DEFAULT_TEXT_LAYER, DEFAULT_FONT_FAMILY } from '../../lib/utils/constants';
+import { useHistory } from '../../hooks/useHistory';
+import { ImageUploadModal } from '../Modals/ImageUploadModal';
+import { CanvasState } from '../../lib/utils/types';
 
 interface ToolbarProps {
   onExport: () => void;
   onSave: () => void;
   className?: string;
+  addLayer: (layer: TextLayer | ImageLayer | ShapeLayer) => void;
+  clearCanvas: () => void;
+  canvasState: CanvasState;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ 
   onExport, 
   onSave, 
-  className = '' 
+  className = '', 
+  addLayer,
+  clearCanvas,
+  canvasState,
 }) => {
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const {
-    addLayer,
-    clearCanvas,
-    canvasState,
-  } = useCanvas();
-
   const history = useHistory(canvasState);
 
   const handleUndo = () => {
@@ -151,7 +141,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <Button
               variant="outline"
               size="sm"
-              icon={Shapes}
+              icon={Square}
               onClick={addShapeLayer}
             >
               Add Shape

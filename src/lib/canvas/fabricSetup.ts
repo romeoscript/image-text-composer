@@ -1,64 +1,55 @@
-import { Canvas, Text, Image, Object, Rect, Circle, Triangle } from 'fabric';
+import { Canvas, Object, Text, Image, Rect, Circle, Triangle } from 'fabric';
 import { CanvasState, Layer, TextLayer, ImageLayer, ShapeLayer } from '../utils/types';
 
-export const initializeCanvas = (
-  canvasElement: HTMLCanvasElement,
-  width: number,
-  height: number
-): Canvas => {
+export const initializeCanvas = (canvasElement: HTMLCanvasElement, width: number, height: number): Canvas => {
   const canvas = new Canvas(canvasElement, {
     width,
     height,
     backgroundColor: '#ffffff',
-    selection: true,
-    preserveObjectStacking: true,
   });
 
-  // Enable touch support
-  canvas.setDimensions({ width, height });
-  
   return canvas;
 };
 
 export const createTextLayer = (layer: TextLayer): Text => {
-  const text = new Text(layer.text, {
+  return new Text(layer.text, {
     left: layer.x,
     top: layer.y,
-    fontSize: layer.fontSize,
     fontFamily: layer.fontFamily,
+    fontSize: layer.fontSize,
     fontWeight: layer.fontWeight,
     fontStyle: layer.fontStyle,
     fill: layer.color,
-    textAlign: layer.textAlign as 'left' | 'center' | 'right' | 'justify',
-    underline: layer.underline,
-    linethrough: layer.linethrough,
     opacity: layer.opacity,
     angle: layer.rotation,
+    textAlign: layer.textAlign,
+    underline: layer.underline,
+    linethrough: layer.linethrough,
     selectable: true,
     evented: true,
+    id: layer.id,
   });
-
-  text.set('id', layer.id);
-  return text;
 };
 
 export const createImageLayer = (layer: ImageLayer): Promise<Image> => {
-  return new Promise((resolve) => {
-    // @ts-expect-error - Fabric.js API expects callback as second parameter
-    Image.fromURL(layer.src, (img: Image) => {
-      img.set({
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const fabricImage = new Image(img, {
         left: layer.x,
         top: layer.y,
-        scaleX: layer.width / (img.width || 1),
-        scaleY: layer.height / (img.height || 1),
+        scaleX: layer.width / img.width,
+        scaleY: layer.height / img.height,
         opacity: layer.opacity,
         angle: layer.rotation,
         selectable: true,
         evented: true,
         id: layer.id,
       });
-      resolve(img);
-    });
+      resolve(fabricImage);
+    };
+    img.onerror = reject;
+    img.src = layer.src;
   });
 };
 
@@ -129,41 +120,48 @@ export const updateCanvasFromState = async (
   
   // Set background
   canvas.backgroundColor = state.backgroundColor;
-  canvas.renderAll();
 
   // Add layers
+  const promises: Promise<void>[] = [];
+  
   for (const layer of state.layers) {
     try {
-      console.log('Processing layer:', layer);
-      let fabricObject: Object;
+      let fabricObjectPromise: Promise<Object>;
 
       switch (layer.type) {
         case 'text':
-          fabricObject = createTextLayer(layer);
-          canvas.add(fabricObject);
-          console.log('Added text layer:', fabricObject);
+          const textObject = createTextLayer(layer);
+          fabricObjectPromise = Promise.resolve(textObject);
           break;
         case 'image':
-          fabricObject = await createImageLayer(layer);
-          canvas.add(fabricObject);
-          console.log('Added image layer:', fabricObject);
+          fabricObjectPromise = createImageLayer(layer);
           break;
         case 'shape':
-          fabricObject = createShapeLayer(layer);
-          canvas.add(fabricObject);
-          console.log('Added shape layer:', fabricObject);
+          const shapeObject = createShapeLayer(layer);
+          fabricObjectPromise = Promise.resolve(shapeObject);
           break;
+        default:
+          continue;
       }
 
-      // Select layer if it's the selected one
-      if (layer.id === state.selectedLayerId) {
-        canvas.setActiveObject(fabricObject);
-      }
+      promises.push(
+        fabricObjectPromise.then((fabricObject) => {
+          canvas.add(fabricObject);
+          
+          // Select layer if it's the selected one
+          if (layer.id === state.selectedLayerId) {
+            canvas.setActiveObject(fabricObject);
+          }
+        })
+      );
     } catch (error) {
       console.error(`Error creating layer ${layer.id}:`, error);
     }
   }
 
+  // Wait for all objects to be added
+  await Promise.all(promises);
+  
   console.log('Canvas objects after update:', canvas.getObjects());
   canvas.renderAll();
 };
@@ -189,25 +187,25 @@ export const getCanvasState = (canvas: Canvas): CanvasState => {
         ...baseLayer,
         type: 'text',
         text: obj.text || '',
-        fontFamily: obj.fontFamily || 'Arial',
+        fontFamily: obj.fontFamily || 'Arial, sans-serif',
         fontSize: obj.fontSize || 24,
-        fontWeight: String(obj.fontWeight || 'normal'),
+        fontWeight: obj.fontWeight || 'normal',
         fontStyle: obj.fontStyle || 'normal',
         color: obj.fill as string || '#000000',
-        width: obj.width || 0,
-        height: obj.height || 0,
         textAlign: obj.textAlign || 'left',
         underline: obj.underline || false,
         linethrough: obj.linethrough || false,
-      });
+        width: obj.width || 100,
+        height: obj.height || 50,
+      } as TextLayer);
     } else if (obj instanceof Image) {
       layers.push({
         ...baseLayer,
         type: 'image',
-        src: obj.getSrc() || '',
-        width: (obj.width || 0) * (obj.scaleX || 1),
-        height: (obj.height || 0) * (obj.scaleY || 1),
-      });
+        src: (obj as any).getSrc(),
+        width: obj.width || 100,
+        height: obj.height || 100,
+      } as ImageLayer);
     } else if (obj instanceof Rect || obj instanceof Circle || obj instanceof Triangle) {
       let shapeType: 'rectangle' | 'circle' | 'triangle';
       if (obj instanceof Rect) shapeType = 'rectangle';
@@ -218,20 +216,23 @@ export const getCanvasState = (canvas: Canvas): CanvasState => {
         ...baseLayer,
         type: 'shape',
         shapeType,
-        width: obj.width || 0,
-        height: obj.height || 0,
+        width: obj.width || 100,
+        height: obj.height || 100,
         fill: obj.fill as string || '#000000',
         stroke: obj.stroke as string || '#000000',
         strokeWidth: obj.strokeWidth || 0,
-      });
+      } as ShapeLayer);
     }
   });
+
+  const activeObject = canvas.getActiveObject();
+  const selectedLayerId = activeObject ? activeObject.get('id') as string : null;
 
   return {
     width: canvas.width || 800,
     height: canvas.height || 600,
-    backgroundColor: String(canvas.backgroundColor || '#ffffff'),
+    backgroundColor: canvas.backgroundColor as string || '#ffffff',
     layers,
-    selectedLayerId: canvas.getActiveObject()?.get('id') || null,
+    selectedLayerId,
   };
-}; 
+};

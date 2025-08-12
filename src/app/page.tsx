@@ -18,6 +18,10 @@ export default function Home() {
     removeLayer,
     selectLayer,
     getSelectedLayer,
+    updateCanvasSize,
+    setBackgroundColor,
+    addLayer,
+    clearCanvas,
   } = useCanvas();
 
   // Enable autosave
@@ -57,7 +61,13 @@ export default function Home() {
         </header>
 
         {/* Toolbar */}
-        <Toolbar onExport={handleExport} onSave={handleSave} />
+        <Toolbar 
+          onExport={handleExport} 
+          onSave={handleSave}
+          addLayer={addLayer}
+          clearCanvas={clearCanvas}
+          canvasState={canvasState}
+        />
 
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
@@ -72,7 +82,12 @@ export default function Home() {
           </div>
 
           {/* Center - Canvas */}
-          <Canvas />
+          <Canvas 
+            canvasRef={canvasRef}
+            canvasState={canvasState}
+            updateCanvasSize={updateCanvasSize}
+            setBackgroundColor={setBackgroundColor}
+          />
 
           {/* Right Sidebar - Properties */}
           <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
