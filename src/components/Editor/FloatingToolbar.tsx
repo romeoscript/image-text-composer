@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TextLayer } from '../../lib/utils/types';
+import { useGoogleFonts } from '../../hooks/useGoogleFonts';
 import { 
   Type, 
   Bold, 
@@ -33,6 +34,15 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 }) => {
   // Local state for opacity slider to prevent jumping
   const [localOpacity, setLocalOpacity] = useState<number>(1);
+  
+  // Get Google Fonts
+  const { fonts, loading } = useGoogleFonts();
+  
+  // Font search state
+  const [fontSearch, setFontSearch] = useState<string>('');
+
+  // State for font picker visibility
+  const [showFontPicker, setShowFontPicker] = useState(false);
 
   // Sync local opacity with selected layer opacity
   useEffect(() => {
@@ -40,6 +50,29 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       setLocalOpacity(selectedLayer.opacity || 1);
     }
   }, [selectedLayer?.opacity]);
+
+  // Close font picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.font-picker-container')) {
+        setShowFontPicker(false);
+      }
+    };
+
+    if (showFontPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFontPicker]);
+
+  // Filter fonts based on search
+  const filteredFonts = fonts.filter(font => 
+    font.family.toLowerCase().includes(fontSearch.toLowerCase())
+  );
 
   if (!visible || !selectedLayer || !position || selectedLayer.type !== 'text') {
     return null;
@@ -137,19 +170,90 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       }}
     >
       {/* Font Family */}
-      <select
-        value={selectedLayer.fontFamily}
-        onChange={(e) => handleFontFamilyChange(e.target.value)}
-        className="px-2 text-black py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        title="Font Family"
-      >
-        <option value="Arial, sans-serif">Arial</option>
-        <option value="Helvetica, sans-serif">Helvetica</option>
-        <option value="Times New Roman, serif">Times New Roman</option>
-        <option value="Georgia, serif">Georgia</option>
-        <option value="Verdana, sans-serif">Verdana</option>
-        <option value="Courier New, monospace">Courier New</option>
-      </select>
+      <div className="relative font-picker-container">
+        {/* Font Search Input */}
+        <input
+          type="text"
+          placeholder="Search fonts..."
+          value={fontSearch || selectedLayer.fontFamily.split(',')[0]}
+          onChange={(e) => setFontSearch(e.target.value)}
+          className="px-3 py-2 text-black text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
+          title="Search Fonts"
+          onFocus={() => setShowFontPicker(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setShowFontPicker(false);
+              setFontSearch('');
+            }
+          }}
+        />
+        
+        {/* Custom Font Picker Dropdown */}
+        {showFontPicker && (
+          <div className="absolute top-full left-0 mt-1 w-64 max-h-80 bg-white border border-gray-300 rounded-lg shadow-lg overflow-y-auto z-50">
+            {loading ? (
+              <div className="p-4 text-center text-gray-500">Loading fonts...</div>
+            ) : (
+              <>
+                {/* Popular Fonts Section */}
+                <div className="sticky top-0 bg-gray-50 px-3 py-2 border-b border-gray-200">
+                  <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Popular</h3>
+                </div>
+                {filteredFonts.filter(font => 
+                  ['Roboto', 'Open Sans', 'Lato', 'Poppins', 'Montserrat', 'Inter'].includes(font.family)
+                ).map(font => (
+                  <button
+                    key={font.family}
+                    onClick={() => {
+                      handleFontFamilyChange(`${font.family}, ${font.category}`);
+                      setShowFontPicker(false);
+                      setFontSearch('');
+                    }}
+                    className={`w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none ${
+                      selectedLayer.fontFamily.includes(font.family) ? 'bg-blue-100' : ''
+                    }`}
+                    style={{ fontFamily: font.family }}
+                  >
+                    <div className="font-medium text-gray-900">{font.family}</div>
+                    <div className="text-xs text-gray-500">The quick brown fox</div>
+                  </button>
+                ))}
+                
+                {/* All Fonts Section */}
+                <div className="sticky top-0 bg-gray-50 px-3 py-2 border-b border-gray-200">
+                  <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">All Fonts</h3>
+                </div>
+                {filteredFonts
+                  .filter(font => !['Roboto', 'Open Sans', 'Lato', 'Poppins', 'Montserrat', 'Inter'].includes(font.family))
+                  .slice(0, 50) // Limit to first 50 for performance
+                  .map(font => (
+                  <button
+                    key={font.family}
+                    onClick={() => {
+                      handleFontFamilyChange(`${font.family}, ${font.category}`);
+                      setShowFontPicker(false);
+                      setFontSearch('');
+                    }}
+                    className={`w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none ${
+                      selectedLayer.fontFamily.includes(font.family) ? 'bg-blue-100' : ''
+                    }`}
+                    style={{ fontFamily: font.family }}
+                  >
+                    <div className="font-medium text-gray-900">{font.family}</div>
+                    <div className="text-xs text-gray-500">The quick brown fox</div>
+                  </button>
+                ))}
+                
+                {filteredFonts.length === 0 && (
+                  <div className="p-4 text-center text-gray-500">No fonts found</div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+        
+        {/* Remove the separate current font display */}
+      </div>
 
       {/* Font Size */}
       <div className="flex items-center gap-1">
@@ -312,4 +416,4 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       </div>
     </div>
   );
-}; 
+};
