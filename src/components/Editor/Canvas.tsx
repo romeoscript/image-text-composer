@@ -73,6 +73,11 @@ export const Canvas: React.FC<CanvasProps> = ({
           Canvas: {canvasState.width} × {canvasState.height} • 
           Layers: {canvasState.layers.length} • 
           Selected: {canvasState.selectedLayerId ? 'Yes' : 'None'}
+          {canvasState.layers.length > 0 && (
+            <span className="ml-2 text-blue-600 font-medium">
+              • Auto-sized to match image
+            </span>
+          )}
         </div>
       </div>
     </div>

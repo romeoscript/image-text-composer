@@ -8,6 +8,32 @@ export const initializeCanvas = (canvasElement: HTMLCanvasElement, width: number
     backgroundColor: '#ffffff',
   });
 
+  // Customize selection styling for better visibility
+  canvas.selectionColor = 'rgba(59, 130, 246, 0.3)'; // Blue with transparency
+  canvas.selectionBorderColor = '#3b82f6'; // Solid blue border
+  canvas.selectionLineWidth = 2; // Thicker selection border
+  canvas.selectionDashArray = [5, 5]; // Dashed selection border for better visibility
+
+  // Add custom CSS for rotation handle
+  const style = document.createElement('style');
+  style.textContent = `
+    .upper-canvas .upper-canvas__selection-rotation-handle {
+      background: #3b82f6 !important;
+      border: 2px solid #ffffff !important;
+      border-radius: 50% !important;
+      width: 12px !important;
+      height: 12px !important;
+      cursor: grab !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+    }
+    .upper-canvas .upper-canvas__selection-rotation-handle:hover {
+      background: #2563eb !important;
+      transform: scale(1.1) !important;
+      transition: all 0.2s ease !important;
+    }
+  `;
+  document.head.appendChild(style);
+
   return canvas;
 };
 
@@ -32,24 +58,31 @@ export const createTextLayer = (layer: TextLayer): Text => {
 };
 
 export const createImageLayer = (layer: ImageLayer): Promise<Image> => {
+  console.log('Creating image layer:', layer);
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const fabricImage = new Image(img, {
+    const htmlImg = new window.Image();
+    htmlImg.onload = () => {
+      console.log('Image loaded successfully:', { imgWidth: htmlImg.width, imgHeight: htmlImg.height, layer });
+      const fabricImage = new Image(htmlImg, {
         left: layer.x,
         top: layer.y,
-        scaleX: layer.width / img.width,
-        scaleY: layer.height / img.height,
+        scaleX: layer.width / htmlImg.width,
+        scaleY: layer.height / htmlImg.height,
         opacity: layer.opacity,
         angle: layer.rotation,
         selectable: true,
         evented: true,
         id: layer.id,
       });
+      console.log('Fabric image created:', fabricImage);
       resolve(fabricImage);
     };
-    img.onerror = reject;
-    img.src = layer.src;
+    htmlImg.onerror = (error) => {
+      console.error('Error loading image:', error);
+      reject(error);
+    };
+    console.log('Setting image src:', layer.src);
+    htmlImg.src = layer.src;
   });
 };
 
@@ -131,7 +164,16 @@ export const updateCanvasFromState = async (
   // Update or add layers
   const promises: Promise<void>[] = [];
   
-  for (const layer of state.layers) {
+  // Sort layers to ensure text is always on top
+  const sortedLayers = [...state.layers].sort((a, b) => {
+    // Text layers should always be on top
+    if (a.type === 'text' && b.type !== 'text') return 1;
+    if (a.type !== 'text' && b.type === 'text') return -1;
+    // For same types, maintain original order
+    return 0;
+  });
+  
+  for (const layer of sortedLayers) {
     try {
       const existingObject = existingObjectsMap.get(layer.id);
       
@@ -161,12 +203,32 @@ export const updateCanvasFromState = async (
 
         promises.push(
           fabricObjectPromise.then((fabricObject) => {
+            console.log('Adding fabric object to canvas:', fabricObject);
+            
+            // Customize object selection styling
+            fabricObject.set({
+              borderColor: '#3b82f6',
+              cornerColor: '#3b82f6',
+              cornerStrokeColor: '#ffffff',
+              cornerSize: 8,
+              cornerStyle: 'circle',
+              transparentCorners: false,
+              borderDashArray: [5, 5],
+              borderScaleFactor: 2,
+              // Custom rotation handle styling
+              hasRotatingPoint: true,
+              rotatingPointOffset: 30,
+            });
+            
             canvas.add(fabricObject);
             
             // Select layer if it's the selected one
             if (layer.id === state.selectedLayerId) {
               canvas.setActiveObject(fabricObject);
             }
+            
+            console.log('Canvas objects after adding:', fabricObject);
+            canvas.renderAll();
           })
         );
       }

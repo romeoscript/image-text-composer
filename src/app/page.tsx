@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { Canvas, Toolbar, Sidebar, LayerPanel, ExportModal } from '../components';
 import { FloatingToolbar } from '../components/Editor/FloatingToolbar';
+import { FloatingActionBar } from '../components/Editor/FloatingActionBar';
 import { useCanvas } from '../hooks/useCanvas';
 import { useAutosave } from '../hooks/useAutosave';
 import { useHistory } from '../hooks/useHistory';
@@ -32,6 +33,9 @@ export default function Home() {
   const [toolbarVisible, setToolbarVisible] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
+  // Interaction state for hiding action bar during manipulation
+  const [isInteracting, setIsInteracting] = useState(false);
+
   // Update toolbar position when selection changes
   const handleSelectionChange = useCallback((layerId: string | null) => {
     if (layerId) {
@@ -55,6 +59,32 @@ export default function Home() {
     handleSelectionChange(canvasState.selectedLayerId);
   }, [canvasState.selectedLayerId, handleSelectionChange]);
 
+  // Track interaction states to hide action bar during manipulation
+  React.useEffect(() => {
+    if (!fabricCanvas) return;
+
+    const handleInteractionStart = () => setIsInteracting(true);
+    const handleInteractionEnd = () => {
+      // Small delay to prevent flickering and ensure interaction is truly complete
+      setTimeout(() => setIsInteracting(false), 100);
+    };
+
+    // Listen for object manipulation events
+    fabricCanvas.on('object:moving', handleInteractionStart);
+    fabricCanvas.on('object:scaling', handleInteractionStart);
+    fabricCanvas.on('object:rotating', handleInteractionStart);
+    fabricCanvas.on('object:modified', handleInteractionEnd);
+    fabricCanvas.on('mouse:up', handleInteractionEnd);
+
+    return () => {
+      fabricCanvas.off('object:moving', handleInteractionStart);
+      fabricCanvas.off('object:scaling', handleInteractionStart);
+      fabricCanvas.off('object:rotating', handleInteractionStart);
+      fabricCanvas.off('object:modified', handleInteractionEnd);
+      fabricCanvas.off('mouse:up', handleInteractionEnd);
+    };
+  }, [fabricCanvas]);
+
   // Enable autosave
   useAutosave(canvasState);
 
@@ -76,6 +106,30 @@ export default function Home() {
 
   const selectedLayer = getSelectedLayer();
 
+  // Get selection position for action bar
+  const getSelectionPosition = useCallback(() => {
+    if (!canvasState.selectedLayerId || !fabricCanvas) return null;
+    
+    const selectedObject = fabricCanvas.getActiveObject();
+    if (!selectedObject) return null;
+    
+    // Get the actual object bounds including any scaling/rotation
+    const boundingRect = selectedObject.getBoundingRect();
+    const canvasElement = fabricCanvas.getElement();
+    const canvasRect = canvasElement.getBoundingClientRect();
+    const zoom = fabricCanvas.getZoom();
+    
+    // Convert canvas coordinates to viewport coordinates
+    const left = (boundingRect.left * zoom) + canvasRect.left;
+    const top = (boundingRect.top * zoom) + canvasRect.top;
+    const width = boundingRect.width * zoom;
+    const height = boundingRect.height * zoom;
+    
+    return { x: left, y: top, width, height };
+  }, [canvasState.selectedLayerId, fabricCanvas]);
+
+  const selectionPosition = getSelectionPosition();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex flex-col h-screen">
@@ -87,8 +141,10 @@ export default function Home() {
             onExport={handleExport} 
             onSave={handleSave}
             addLayer={addLayer}
+            selectLayer={selectLayer}
             clearCanvas={clearCanvas}
             canvasState={canvasState}
+            updateCanvasSize={updateCanvasSize}
           />
           <div className="flex-1 flex overflow-hidden">
             {/* Left Sidebar - Layer Panel */}
@@ -115,7 +171,15 @@ export default function Home() {
                 onDeleteLayer={removeLayer}
                 onDuplicateLayer={duplicateLayer}
                 position={toolbarPosition}
-                visible={toolbarVisible}
+                visible={toolbarVisible && getSelectedLayer()?.type === 'text'}
+              />
+              <FloatingActionBar
+                selectedLayer={getSelectedLayer() || null}
+                onDuplicateLayer={duplicateLayer}
+                onDeleteLayer={removeLayer}
+                position={selectionPosition}
+                visible={!!canvasState.selectedLayerId}
+                isInteracting={isInteracting}
               />
             </div>
           </div>

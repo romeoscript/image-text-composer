@@ -29,12 +29,16 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     setError('');
 
     try {
+      console.log('Processing image file:', file.name, file.size, file.type);
+      
       // Resize image if too large (max 1200x1200 for performance)
       const resizedImage = await resizeImage(file, 1200, 1200);
+      console.log('Image resized successfully:', resizedImage);
       
       // Calculate position (center of canvas)
       const centerX = Math.max(0, (canvasWidth - resizedImage.width) / 2);
       const centerY = Math.max(0, (canvasHeight - resizedImage.height) / 2);
+      console.log('Image positioning:', { centerX, centerY, canvasWidth, canvasHeight });
 
       // Create image layer
       const imageLayer: ImageLayer = {
@@ -48,6 +52,8 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         rotation: 0,
         opacity: 1,
       };
+      
+      console.log('Created image layer:', imageLayer);
 
       onImageAdd(imageLayer);
       onClose();

@@ -13,8 +13,10 @@ interface ToolbarProps {
   onSave: () => void;
   className?: string;
   addLayer: (layer: TextLayer | ImageLayer | ShapeLayer) => void;
+  selectLayer: (layerId: string) => void;
   clearCanvas: () => void;
   canvasState: CanvasState;
+  updateCanvasSize: (width: number, height: number) => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ 
@@ -22,8 +24,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSave, 
   className = '', 
   addLayer,
+  selectLayer,
   clearCanvas,
   canvasState,
+  updateCanvasSize,
 }) => {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const history = useHistory(canvasState);
@@ -64,7 +68,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       underline: DEFAULT_TEXT_LAYER.underline,
       linethrough: DEFAULT_TEXT_LAYER.linethrough,
     };
+    
+    // Add the text layer and auto-select it
     addLayer(textLayer);
+    
+    // Auto-select the newly created text layer
+    setTimeout(() => {
+      selectLayer(textLayer.id);
+    }, 100); // Small delay to ensure the layer is added first
   };
 
   const addImageLayer = () => {
@@ -72,7 +83,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const handleImageAdd = (imageLayer: ImageLayer) => {
+    // If this is the first image, auto-resize canvas to match image dimensions
+    if (canvasState.layers.length === 0) {
+      console.log('First image uploaded - auto-resizing canvas to match dimensions:', {
+        imageWidth: imageLayer.width,
+        imageHeight: imageLayer.height,
+        currentCanvas: `${canvasState.width}x${canvasState.height}`
+      });
+      
+      // Auto-resize canvas to match image dimensions for perfect aspect ratio
+      updateCanvasSize(imageLayer.width, imageLayer.height);
+    }
+    
     addLayer(imageLayer);
+    
+    // Auto-select the newly created image layer
+    setTimeout(() => {
+      selectLayer(imageLayer.id);
+    }, 100);
   };
 
   const addShapeLayer = () => {
@@ -90,7 +118,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       stroke: '#000000',
       strokeWidth: 2,
     };
+    
     addLayer(shapeLayer);
+    
+    // Auto-select the newly created shape layer
+    setTimeout(() => {
+      selectLayer(shapeLayer.id);
+    }, 100);
   };
 
   return (
