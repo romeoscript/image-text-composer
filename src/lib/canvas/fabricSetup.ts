@@ -115,55 +115,105 @@ export const updateCanvasFromState = async (
 ): Promise<void> => {
   console.log('updateCanvasFromState called with:', state);
   
-  // Clear existing objects
-  canvas.clear();
-  
   // Set background
   canvas.backgroundColor = state.backgroundColor;
 
-  // Add layers
+  // Get existing objects to preserve transforms
+  const existingObjects = canvas.getObjects();
+  const existingObjectsMap = new Map();
+  existingObjects.forEach(obj => {
+    const id = obj.get('id') as string;
+    if (id) {
+      existingObjectsMap.set(id, obj);
+    }
+  });
+
+  // Update or add layers
   const promises: Promise<void>[] = [];
   
   for (const layer of state.layers) {
     try {
-      let fabricObjectPromise: Promise<Object>;
+      const existingObject = existingObjectsMap.get(layer.id);
+      
+      if (existingObject) {
+        // Update existing object properties without recreating
+        updateExistingObject(existingObject, layer);
+        promises.push(Promise.resolve());
+      } else {
+        // Create new object only if it doesn't exist
+        let fabricObjectPromise: Promise<Object>;
 
-      switch (layer.type) {
-        case 'text':
-          const textObject = createTextLayer(layer);
-          fabricObjectPromise = Promise.resolve(textObject);
-          break;
-        case 'image':
-          fabricObjectPromise = createImageLayer(layer);
-          break;
-        case 'shape':
-          const shapeObject = createShapeLayer(layer);
-          fabricObjectPromise = Promise.resolve(shapeObject);
-          break;
-        default:
-          continue;
+        switch (layer.type) {
+          case 'text':
+            const textObject = createTextLayer(layer);
+            fabricObjectPromise = Promise.resolve(textObject);
+            break;
+          case 'image':
+            fabricObjectPromise = createImageLayer(layer);
+            break;
+          case 'shape':
+            const shapeObject = createShapeLayer(layer);
+            fabricObjectPromise = Promise.resolve(shapeObject);
+            break;
+          default:
+            continue;
+        }
+
+        promises.push(
+          fabricObjectPromise.then((fabricObject) => {
+            canvas.add(fabricObject);
+            
+            // Select layer if it's the selected one
+            if (layer.id === state.selectedLayerId) {
+              canvas.setActiveObject(fabricObject);
+            }
+          })
+        );
       }
-
-      promises.push(
-        fabricObjectPromise.then((fabricObject) => {
-          canvas.add(fabricObject);
-          
-          // Select layer if it's the selected one
-          if (layer.id === state.selectedLayerId) {
-            canvas.setActiveObject(fabricObject);
-          }
-        })
-      );
     } catch (error) {
-      console.error(`Error creating layer ${layer.id}:`, error);
+      console.error(`Error updating layer ${layer.id}:`, error);
     }
   }
+
+  // Remove objects that no longer exist in state
+  existingObjects.forEach(obj => {
+    const id = obj.get('id') as string;
+    if (id && !state.layers.find(l => l.id === id)) {
+      canvas.remove(obj);
+    }
+  });
 
   // Wait for all objects to be added
   await Promise.all(promises);
   
   console.log('Canvas objects after update:', canvas.getObjects());
   canvas.renderAll();
+};
+
+// Helper function to update existing objects without recreating them
+const updateExistingObject = (obj: Object, layer: Layer) => {
+  // Only update properties that actually changed, preserve transforms
+  if (obj instanceof Text && layer.type === 'text') {
+    const textLayer = layer as TextLayer;
+    if (obj.text !== textLayer.text) obj.set('text', textLayer.text);
+    if (obj.fontFamily !== textLayer.fontFamily) obj.set('fontFamily', textLayer.fontFamily);
+    if (obj.fontSize !== textLayer.fontSize) obj.set('fontSize', textLayer.fontSize);
+    if (obj.fontWeight !== textLayer.fontWeight) obj.set('fontWeight', textLayer.fontWeight);
+    if (obj.fontStyle !== textLayer.fontStyle) obj.set('fontStyle', textLayer.fontStyle);
+    if (obj.fill !== textLayer.color) obj.set('fill', textLayer.color);
+    if (obj.textAlign !== textLayer.textAlign) obj.set('textAlign', textLayer.textAlign);
+    if (obj.underline !== textLayer.underline) obj.set('underline', textLayer.underline);
+    if (obj.linethrough !== textLayer.linethrough) obj.set('linethrough', textLayer.linethrough);
+  }
+  
+  // Don't update position, size, or rotation as these are handled by transforms
+  // obj.set('left', layer.x);
+  // obj.set('top', layer.y);
+  // obj.set('width', layer.width);
+  // obj.set('height', layer.height);
+  // obj.set('angle', layer.rotation);
+  
+  obj.setCoords();
 };
 
 export const getCanvasState = (canvas: Canvas): CanvasState => {
