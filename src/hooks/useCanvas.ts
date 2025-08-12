@@ -7,6 +7,8 @@ import { DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_BACKGROUND 
 export const useCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<Canvas | null>(null);
+  const isUnmountingRef = useRef(false);
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
   const [canvasState, setCanvasState] = useState<CanvasState>({
     width: DEFAULT_CANVAS_WIDTH,
     height: DEFAULT_CANVAS_HEIGHT,
@@ -17,12 +19,18 @@ export const useCanvas = () => {
 
   // Initialize canvas
   useEffect(() => {
+    console.log('useEffect for canvas initialization running');
+    console.log('canvasRef.current:', canvasRef.current);
+    console.log('fabricCanvasRef.current:', fabricCanvasRef.current);
+    
     if (canvasRef.current && !fabricCanvasRef.current) {
+      console.log('Initializing Fabric.js canvas...');
       const canvas = initializeCanvas(
         canvasRef.current,
         canvasState.width,
         canvasState.height
       );
+      console.log('Canvas initialized:', canvas);
       fabricCanvasRef.current = canvas;
 
       // Set up event listeners
@@ -46,22 +54,52 @@ export const useCanvas = () => {
         const newState = getCanvasState(canvas);
         setCanvasState(newState);
       });
+
+      // Set canvas as ready AFTER everything is set up
+      setIsCanvasReady(true);
+      console.log('Canvas is now ready for use');
     }
 
+    // Only cleanup when component unmounts, not during re-runs
     return () => {
-      if (fabricCanvasRef.current) {
-        fabricCanvasRef.current.dispose();
-        fabricCanvasRef.current = null;
+      // Check if this is a real unmount or just a re-run
+      if (isUnmountingRef.current) {
+        console.log('Component unmounting. Disposing canvas...');
+        if (fabricCanvasRef.current) {
+          fabricCanvasRef.current.dispose();
+          fabricCanvasRef.current = null;
+          setIsCanvasReady(false);
+        }
+      } else {
+        console.log('useEffect re-run, keeping canvas alive');
       }
+    };
+  }, []); // Keep empty dependency array
+
+  // Cleanup effect to detect real unmounts
+  useEffect(() => {
+    return () => {
+      console.log('Component unmounting detected');
+      isUnmountingRef.current = true;
     };
   }, []);
 
-  // Update canvas when state changes
+  // Update canvas when layers change - ONLY when canvas is ready
   useEffect(() => {
-    if (fabricCanvasRef.current) {
+    console.log('useEffect for layers change running');
+    console.log('fabricCanvasRef.current:', !!fabricCanvasRef.current);
+    console.log('isCanvasReady:', isCanvasReady);
+    console.log('layers count:', canvasState.layers.length);
+    
+    // Only proceed if canvas exists AND is ready
+    if (fabricCanvasRef.current && isCanvasReady) {
+      console.log('Updating canvas with layers...');
       updateCanvasFromState(fabricCanvasRef.current, canvasState);
+      console.log('Canvas updated successfully');
+    } else {
+      console.log('Canvas not ready yet. Waiting...');
     }
-  }, [canvasState]);
+  }, [canvasState.layers, canvasState.backgroundColor, canvasState.selectedLayerId, isCanvasReady]);
 
   const updateCanvasSize = useCallback((width: number, height: number) => {
     if (fabricCanvasRef.current) {
@@ -79,10 +117,15 @@ export const useCanvas = () => {
   }, []);
 
   const addLayer = useCallback((layer: Layer) => {
-    setCanvasState(prev => ({
-      ...prev,
-      layers: [...prev.layers, layer],
-    }));
+    console.log('addLayer called with:', layer);
+    setCanvasState(prev => {
+      const newState = {
+        ...prev,
+        layers: [...prev.layers, layer],
+      };
+      console.log('New canvas state:', newState);
+      return newState;
+    });
   }, []);
 
   const updateLayer = useCallback((layerId: string, updates: Partial<Layer>) => {
@@ -145,5 +188,6 @@ export const useCanvas = () => {
     selectLayer,
     getSelectedLayer,
     clearCanvas,
+    isCanvasReady, // Expose this for debugging
   };
-}; 
+};

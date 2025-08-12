@@ -13,3 +13,4 @@ export { FileUpload } from './UI/FileUpload';
 
 // Modal Components
 export { ExportModal } from './Modals/ExportModal'; 
+export { ImageUploadModal } from './Modals/ImageUploadModal';

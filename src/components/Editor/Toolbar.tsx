@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Undo2, 
   Redo2, 
@@ -11,6 +11,7 @@ import {
   Shapes
 } from 'lucide-react';
 import { Button } from '../UI/Button';
+import { ImageUploadModal } from '../Modals/ImageUploadModal';
 import { useCanvas } from '../../hooks/useCanvas';
 import { useHistory } from '../../hooks/useHistory';
 import { generateId } from '../../lib/utils/helpers';
@@ -28,6 +29,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSave, 
   className = '' 
 }) => {
+  const [showImageUpload, setShowImageUpload] = useState(false);
   const {
     addLayer,
     clearCanvas,
@@ -76,19 +78,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const addImageLayer = () => {
-    // This would typically open a file picker
-    // For now, we'll add a placeholder
-    const imageLayer: ImageLayer = {
-      id: generateId(),
-      type: 'image',
-      src: 'https://via.placeholder.com/200x150',
-      x: 150,
-      y: 150,
-      width: 200,
-      height: 150,
-      rotation: 0,
-      opacity: 1,
-    };
+    setShowImageUpload(true);
+  };
+
+  const handleImageAdd = (imageLayer: ImageLayer) => {
     addLayer(imageLayer);
   };
 
@@ -111,89 +104,101 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div className={`bg-white border-b border-gray-200 px-6 py-3 ${className}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Undo2}
-            onClick={handleUndo}
-            disabled={!history.canUndo}
-          >
-            Undo
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Redo2}
-            onClick={handleRedo}
-            disabled={!history.canRedo}
-          >
-            Redo
-          </Button>
-        </div>
+    <>
+      <div className={`bg-white border-b border-gray-200 px-6 py-3 ${className}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Undo2}
+              onClick={handleUndo}
+              disabled={!history.canUndo}
+            >
+              Undo
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Redo2}
+              onClick={handleRedo}
+              disabled={!history.canRedo}
+            >
+              Redo
+            </Button>
+          </div>
 
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Type}
-            onClick={addTextLayer}
-          >
-            Add Text
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            icon={ImageIcon}
-            onClick={addImageLayer}
-          >
-            Add Image
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Shapes}
-            onClick={addShapeLayer}
-          >
-            Add Shape
-          </Button>
-        </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Type}
+              onClick={addTextLayer}
+            >
+              Add Text
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              icon={ImageIcon}
+              onClick={addImageLayer}
+            >
+              Add Image
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Shapes}
+              onClick={addShapeLayer}
+            >
+              Add Shape
+            </Button>
+          </div>
 
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Trash2}
-            onClick={clearCanvas}
-            className="text-red-600 hover:text-red-700"
-          >
-            Clear
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Save}
-            onClick={onSave}
-          >
-            Save
-          </Button>
-          
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Download}
-            onClick={onExport}
-          >
-            Export
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Trash2}
+              onClick={clearCanvas}
+              className="text-red-600 hover:text-red-700"
+            >
+              Clear
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Save}
+              onClick={onSave}
+            >
+              Save
+            </Button>
+            
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Download}
+              onClick={onExport}
+            >
+              Export
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Image Upload Modal */}
+      {showImageUpload && (
+        <ImageUploadModal
+          onClose={() => setShowImageUpload(false)}
+          onImageAdd={handleImageAdd}
+          canvasWidth={canvasState.width}
+          canvasHeight={canvasState.height}
+        />
+      )}
+    </>
   );
-}; 
+};

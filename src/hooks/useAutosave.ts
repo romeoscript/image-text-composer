@@ -1,24 +1,27 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { CanvasState } from '../lib/utils/types';
 import { saveToLocalStorage } from '../lib/storage/localStorage';
-import { debounce } from '../lib/utils/helpers';
 import { AUTOSAVE_INTERVAL } from '../lib/utils/constants';
 
 export const useAutosave = (canvasState: CanvasState, enabled: boolean = true) => {
   const lastSavedStateRef = useRef<string>('');
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   // Debounced save function
-  const debouncedSave = useCallback(
-    debounce((state: CanvasState) => {
+  const debouncedSave = useCallback((state: CanvasState) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = setTimeout(() => {
       const stateString = JSON.stringify(state);
       if (stateString !== lastSavedStateRef.current) {
         saveToLocalStorage(state);
         lastSavedStateRef.current = stateString;
         console.log('Canvas state autosaved');
       }
-    }, 1000) as (state: CanvasState) => void,
-    []
-  );
+    }, 1000);
+  }, []);
 
   // Save on state change
   useEffect(() => {

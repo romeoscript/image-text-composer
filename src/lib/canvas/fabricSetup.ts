@@ -122,6 +122,8 @@ export const updateCanvasFromState = async (
   canvas: Canvas,
   state: CanvasState
 ): Promise<void> => {
+  console.log('updateCanvasFromState called with:', state);
+  
   // Clear existing objects
   canvas.clear();
   
@@ -132,20 +134,24 @@ export const updateCanvasFromState = async (
   // Add layers
   for (const layer of state.layers) {
     try {
+      console.log('Processing layer:', layer);
       let fabricObject: Object;
 
       switch (layer.type) {
         case 'text':
           fabricObject = createTextLayer(layer);
           canvas.add(fabricObject);
+          console.log('Added text layer:', fabricObject);
           break;
         case 'image':
           fabricObject = await createImageLayer(layer);
           canvas.add(fabricObject);
+          console.log('Added image layer:', fabricObject);
           break;
         case 'shape':
           fabricObject = createShapeLayer(layer);
           canvas.add(fabricObject);
+          console.log('Added shape layer:', fabricObject);
           break;
       }
 
@@ -158,6 +164,7 @@ export const updateCanvasFromState = async (
     }
   }
 
+  console.log('Canvas objects after update:', canvas.getObjects());
   canvas.renderAll();
 };
 
