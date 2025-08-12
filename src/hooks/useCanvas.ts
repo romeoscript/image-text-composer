@@ -442,6 +442,26 @@ export const useCanvas = () => {
     return canvasState.layers.find(layer => layer.id === canvasState.selectedLayerId);
   }, [canvasState.selectedLayerId, canvasState.layers]);
 
+  const duplicateLayer = useCallback((layerId: string) => {
+    if (!isCanvasReady) return;
+    
+    const layerToDuplicate = canvasState.layers.find(layer => layer.id === layerId);
+    if (!layerToDuplicate) return;
+    
+    const duplicatedLayer = {
+      ...layerToDuplicate,
+      id: `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      x: (layerToDuplicate.x || 0) + 20,
+      y: (layerToDuplicate.y || 0) + 20,
+    };
+    
+    setCanvasState(prev => ({
+      ...prev,
+      layers: [...prev.layers, duplicatedLayer],
+      selectedLayerId: duplicatedLayer.id,
+    }));
+  }, [isCanvasReady, canvasState.layers]);
+
   const clearCanvas = useCallback(() => {
     if (fabricCanvasRef.current && isCanvasReady) {
       isUpdatingRef.current = true;
@@ -467,6 +487,7 @@ export const useCanvas = () => {
     removeLayer,
     selectLayer,
     getSelectedLayer,
+    duplicateLayer,
     clearCanvas,
   };
 };

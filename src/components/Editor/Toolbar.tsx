@@ -95,13 +95,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <>
-      <div className={`bg-white border-b border-gray-200 px-6 py-3 ${className}`}>
+      <div className={`bg-blue-500 text-white border-b border-blue-600 px-6 py-3 ${className}`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <Button
               variant="outline"
               size="sm"
               icon={Undo2}
+              className="text-white border-white hover:bg-white hover:text-blue-500 transition-colors"
               onClick={handleUndo}
               disabled={!history.canUndo}
             >
@@ -112,6 +113,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               variant="outline"
               size="sm"
               icon={Redo2}
+              className="text-white border-white hover:bg-white hover:text-blue-500 transition-colors"
               onClick={handleRedo}
               disabled={!history.canRedo}
             >
@@ -119,12 +121,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </Button>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <Button
               variant="outline"
               size="sm"
               icon={Type}
               onClick={addTextLayer}
+              className="text-white border-white hover:bg-white hover:text-blue-500 transition-colors"
             >
               Add Text
             </Button>
@@ -134,6 +137,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               size="sm"
               icon={ImageIcon}
               onClick={addImageLayer}
+              className="text-white border-white hover:bg-white hover:text-blue-500 transition-colors"
             >
               Add Image
             </Button>
@@ -143,18 +147,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               size="sm"
               icon={Square}
               onClick={addShapeLayer}
+              className="text-white border-white hover:bg-white hover:text-blue-500 transition-colors"
             >
               Add Shape
             </Button>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <Button
               variant="outline"
               size="sm"
               icon={Trash2}
               onClick={clearCanvas}
-              className="text-red-600 hover:text-red-700"
+              className="text-red-200 border-red-300 hover:bg-red-600 hover:text-white transition-colors"
             >
               Clear
             </Button>
@@ -164,15 +169,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               size="sm"
               icon={Save}
               onClick={onSave}
+              className="text-white border-white hover:bg-white hover:text-blue-500 transition-colors"
             >
               Save
             </Button>
             
             <Button
-              variant="primary"
+              variant="outline"
               size="sm"
               icon={Download}
               onClick={onExport}
+              className="bg-white text-black hover:bg-gray-100 transition-colors"
             >
               Export
             </Button>

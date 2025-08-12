@@ -137,7 +137,7 @@ export const updateCanvasFromState = async (
       
       if (existingObject) {
         // Update existing object properties without recreating
-        updateExistingObject(existingObject, layer);
+        updateExistingObject(existingObject, layer, canvas);
         promises.push(Promise.resolve());
       } else {
         // Create new object only if it doesn't exist
@@ -191,7 +191,7 @@ export const updateCanvasFromState = async (
 };
 
 // Helper function to update existing objects without recreating them
-const updateExistingObject = (obj: Object, layer: Layer) => {
+const updateExistingObject = (obj: Object, layer: Layer, canvas: Canvas) => {
   // Only update properties that actually changed, preserve transforms
   if (obj instanceof Text && layer.type === 'text') {
     const textLayer = layer as TextLayer;
@@ -204,6 +204,7 @@ const updateExistingObject = (obj: Object, layer: Layer) => {
     if (obj.textAlign !== textLayer.textAlign) obj.set('textAlign', textLayer.textAlign);
     if (obj.underline !== textLayer.underline) obj.set('underline', textLayer.underline);
     if (obj.linethrough !== textLayer.linethrough) obj.set('linethrough', textLayer.linethrough);
+    if (obj.opacity !== textLayer.opacity) obj.set('opacity', textLayer.opacity);
   }
   
   // Don't update position, size, or rotation as these are handled by transforms
@@ -214,6 +215,7 @@ const updateExistingObject = (obj: Object, layer: Layer) => {
   // obj.set('angle', layer.rotation);
   
   obj.setCoords();
+  canvas.renderAll(); // Re-render to show opacity changes
 };
 
 export const getCanvasState = (canvas: Canvas): CanvasState => {
