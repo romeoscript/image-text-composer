@@ -44,6 +44,7 @@ export const createTextLayer = (layer: TextLayer): Text => {
 
 export const createImageLayer = (layer: ImageLayer): Promise<Image> => {
   return new Promise((resolve) => {
+    // @ts-expect-error - Fabric.js API expects callback as second parameter
     Image.fromURL(layer.src, (img: Image) => {
       img.set({
         left: layer.x,
