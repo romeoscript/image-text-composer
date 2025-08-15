@@ -1,32 +1,11 @@
-import { toast } from "sonner";
-import { useMutation } from "@tanstack/react-query";
-import { InferResponseType } from "hono";
-
-import { client } from "@/lib/hono";
-
-type ResponseType = InferResponseType<typeof client.api.subscriptions.checkout["$post"], 200>;
-
+// Checkout hook disabled - checkout endpoint not available
 export const useCheckout = () => {
-  const mutation = useMutation<
-    ResponseType,
-    Error
-  >({
-    mutationFn: async () => {
-      const response = await client.api.subscriptions.checkout.$post();
-
-      if (!response.ok) {
-        throw new Error("Failed to create session");
-      }
-
-      return await response.json();
+  return {
+    mutate: () => {
+      console.warn("Checkout feature is disabled");
     },
-    onSuccess: ({ data }) => {
-      window.location.href = data;
-    },
-    onError: () => {
-      toast.error("Failed to create session");
-    },
-  });
-
-  return mutation;
+    isPending: false,
+    isError: false,
+    error: null,
+  };
 };

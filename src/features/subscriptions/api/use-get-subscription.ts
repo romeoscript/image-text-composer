@@ -1,21 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-
-import { client } from "@/lib/hono";
-
+// Get subscription hook disabled - current endpoint not available
 export const useGetSubscription = () => {
-  const query = useQuery({
-    queryKey: ["subscription"],
-    queryFn: async () => {
-      const response = await client.api.subscriptions.current.$get();
-
-      if (!response.ok) {
-        throw new Error("Something went wrong");
-      }
-
-      const { data } = await response.json();
-      return data; 
+  return {
+    data: null,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: () => {
+      console.warn("Get subscription feature is disabled");
     },
-  });
-
-  return query;
+  };
 };

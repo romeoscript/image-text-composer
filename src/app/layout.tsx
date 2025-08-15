@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
-import { SubscriptionAlert } from "@/features/subscriptions/components/subscription-alert";
+// SubscriptionAlert disabled - subscription features removed
 
 import { Modals } from "@/components/modals";
 import { Toaster } from "@/components/ui/sonner";
@@ -27,7 +27,7 @@ export default async function RootLayout({
         <Providers>
           <Toaster />
           <Modals />
-          <SubscriptionAlert />
+          {/* SubscriptionAlert disabled - subscription features removed */}
           {children}
         </Providers>
       </body>
