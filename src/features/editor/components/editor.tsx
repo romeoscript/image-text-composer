@@ -1,11 +1,7 @@
 "use client";
 
 import { fabric } from "fabric";
-import debounce from "lodash.debounce";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-import { ResponseType } from "@/features/projects/api/use-get-project";
-import { useUpdateProject } from "@/features/projects/api/use-update-project";
 
 import { 
   ActiveTool, 
@@ -23,34 +19,19 @@ import { StrokeWidthSidebar } from "@/features/editor/components/stroke-width-si
 import { OpacitySidebar } from "@/features/editor/components/opacity-sidebar";
 import { TextSidebar } from "@/features/editor/components/text-sidebar";
 import { FontSidebar } from "@/features/editor/components/font-sidebar";
-import { ImageSidebar } from "@/features/editor/components/image-sidebar";
+
 import { FilterSidebar } from "@/features/editor/components/filter-sidebar";
 import { DrawSidebar } from "@/features/editor/components/draw-sidebar";
-import { AiSidebar } from "@/features/editor/components/ai-sidebar";
-import { TemplateSidebar } from "@/features/editor/components/template-sidebar";
-import { RemoveBgSidebar } from "@/features/editor/components/remove-bg-sidebar";
+
+
+
 import { SettingsSidebar } from "@/features/editor/components/settings-sidebar";
 
 interface EditorProps {
-  initialData: ResponseType["data"];
+  // No props needed for localStorage-based editor
 };
 
-export const Editor = ({ initialData }: EditorProps) => {
-  const { mutate } = useUpdateProject(initialData.id);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSave = useCallback(
-    debounce(
-      (values: { 
-        json: string,
-        height: number,
-        width: number,
-      }) => {
-        mutate(values);
-    },
-    500
-  ), [mutate]);
-
+export const Editor = () => {
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
 
   const onClearSelection = useCallback(() => {
@@ -59,12 +40,28 @@ export const Editor = ({ initialData }: EditorProps) => {
     }
   }, [activeTool]);
 
+  // localStorage save callback
+  const saveToLocalStorage = useCallback((values: { 
+    json: string,
+    height: number,
+    width: number,
+  }) => {
+    try {
+      localStorage.setItem('imageTextComposer', JSON.stringify({
+        ...values,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.error('Failed to save to localStorage:', error);
+    }
+  }, []);
+
   const { init, editor } = useEditor({
-    defaultState: initialData.json,
-    defaultWidth: initialData.width,
-    defaultHeight: initialData.height,
+    defaultState: undefined, // Will be loaded from localStorage
+    defaultWidth: 800,  // Default canvas size
+    defaultHeight: 600,
     clearSelectionCallback: onClearSelection,
-    saveCallback: debouncedSave,
+    saveCallback: saveToLocalStorage,
   });
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {
@@ -105,7 +102,6 @@ export const Editor = ({ initialData }: EditorProps) => {
   return (
     <div className="h-full flex flex-col">
       <Navbar
-        id={initialData.id}
         editor={editor}
         activeTool={activeTool}
         onChangeActiveTool={onChangeActiveTool}
@@ -150,31 +146,15 @@ export const Editor = ({ initialData }: EditorProps) => {
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <ImageSidebar
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <TemplateSidebar
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
+
+
         <FilterSidebar
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <AiSidebar
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <RemoveBgSidebar
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
+
+
         <DrawSidebar
           editor={editor}
           activeTool={activeTool}

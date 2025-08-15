@@ -78,4 +78,4 @@ const config = {
   plugins: [require("tailwindcss-animate")],
 } satisfies Config
 
-export default withUt(config);
+export default config;

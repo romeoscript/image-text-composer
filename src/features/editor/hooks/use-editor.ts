@@ -374,6 +374,36 @@ const buildEditor = ({
       });
       canvas.renderAll();
     },
+    nudgeObjects: (direction: 'up' | 'down' | 'left' | 'right', amount: number = 1) => {
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length > 0) {
+        activeObjects.forEach((obj) => {
+          switch (direction) {
+            case 'up':
+              obj.set({ top: obj.top! - amount });
+              break;
+            case 'down':
+              obj.set({ top: obj.top! + amount });
+              break;
+            case 'left':
+              obj.set({ left: obj.left! - amount });
+              break;
+            case 'right':
+              obj.set({ left: obj.left! + amount });
+              break;
+          }
+        });
+        canvas.renderAll();
+        save(); // Save the nudged position
+      }
+    },
+    getNudgeAmount: () => {
+      return 1; // Default nudge amount
+    },
+    setNudgeAmount: (amount: number) => {
+      // This could be stored in state if needed
+      // For now, we'll use the default amount
+    },
     changeOpacity: (value: number) => {
       canvas.getActiveObjects().forEach((object) => {
         object.set({ opacity: value });
@@ -606,6 +636,37 @@ const buildEditor = ({
 
       return value;
     },
+    clearLocalStorage: () => {
+      try {
+        localStorage.removeItem('imageTextComposer');
+        // Clear canvas and reset to default state
+        if (canvas) {
+          canvas.clear();
+          // Reset canvas dimensions
+          if (container) {
+            canvas.setDimensions({
+              width: container.offsetWidth,
+              height: container.offsetHeight,
+            });
+          }
+          // Re-add workspace
+          const workspace = new fabric.Rect({
+            width: initialWidth.current,
+            height: initialHeight.current,
+            name: "clip",
+            fill: "white",
+            selectable: false,
+            hasControls: false,
+          });
+          canvas.add(workspace);
+          canvas.centerObject(workspace);
+          canvas.clipPath = workspace;
+          canvas.renderAll();
+        }
+      } catch (error) {
+        console.error('Failed to clear localStorage:', error);
+      }
+    },
     selectedObjects,
   };
 };
@@ -764,6 +825,38 @@ export const useEditor = ({
       setCanvas(initialCanvas);
       setContainer(initialContainer);
 
+      // Try to load saved state from localStorage
+      try {
+        const savedData = localStorage.getItem('imageTextComposer');
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          if (parsedData.json) {
+            // Load the saved canvas state
+            initialCanvas.loadFromJSON(parsedData.json, () => {
+              // Update canvas dimensions if saved
+              if (parsedData.width && parsedData.height) {
+                initialCanvas.setDimensions({
+                  width: parsedData.width,
+                  height: parsedData.height,
+                });
+              }
+              autoZoom();
+            });
+            
+            // Set the saved state as initial
+            const savedState = JSON.stringify(
+              initialCanvas.toJSON(JSON_KEYS)
+            );
+            canvasHistory.current = [savedState];
+            setHistoryIndex(0);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load from localStorage:', error);
+      }
+
+      // If no saved state, use default
       const currentState = JSON.stringify(
         initialCanvas.toJSON(JSON_KEYS)
       );

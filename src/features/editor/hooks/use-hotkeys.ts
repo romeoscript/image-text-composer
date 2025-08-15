@@ -64,5 +64,34 @@ export const useHotkeys = ({ canvas, undo, redo, save, copy, paste }: UseHotkeys
       canvas?.setActiveObject(new fabric.ActiveSelection(allObjects, { canvas }));
       canvas?.renderAll();
     }
+
+    // Arrow key nudging for precise positioning
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+      event.preventDefault();
+      
+      const activeObjects = canvas?.getActiveObjects();
+      if (activeObjects && activeObjects.length > 0) {
+        const nudgeAmount = event.shiftKey ? 10 : 1; // Shift + arrow = 10px, just arrow = 1px
+        
+        activeObjects.forEach((obj) => {
+          switch (event.key) {
+            case "ArrowUp":
+              obj.set({ top: obj.top! - nudgeAmount });
+              break;
+            case "ArrowDown":
+              obj.set({ top: obj.top! + nudgeAmount });
+              break;
+            case "ArrowLeft":
+              obj.set({ left: obj.left! - nudgeAmount });
+              break;
+            case "ArrowRight":
+              obj.set({ left: obj.left! + nudgeAmount });
+              break;
+          }
+        });
+        
+        canvas?.renderAll();
+      }
+    }
   });
 };

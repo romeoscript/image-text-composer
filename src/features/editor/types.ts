@@ -117,6 +117,18 @@ export const FONT_FAMILY = "Arial";
 export const FONT_SIZE = 32;
 export const FONT_WEIGHT = 400;
 
+export const FONT_WEIGHTS = [
+  { value: 100, label: "Thin" },
+  { value: 200, label: "Extra Light" },
+  { value: 300, label: "Light" },
+  { value: 400, label: "Regular" },
+  { value: 500, label: "Medium" },
+  { value: 600, label: "Semi Bold" },
+  { value: 700, label: "Bold" },
+  { value: 800, label: "Extra Bold" },
+  { value: 900, label: "Black" },
+];
+
 export const CIRCLE_OPTIONS = {
   radius: 225,
   left: 100,
@@ -240,6 +252,9 @@ export interface Editor {
   getActiveFontWeight: () => number;
   getActiveFontFamily: () => string;
   changeFontFamily: (value: string) => void;
+  nudgeObjects: (direction: 'up' | 'down' | 'left' | 'right', amount?: number) => void;
+  getNudgeAmount: () => number;
+  setNudgeAmount: (amount: number) => void;
   addText: (value: string, options?: ITextboxOptions) => void;
   getActiveOpacity: () => number;
   changeOpacity: (value: number) => void;
@@ -260,5 +275,6 @@ export interface Editor {
   getActiveStrokeColor: () => string;
   getActiveStrokeWidth: () => number;
   getActiveStrokeDashArray: () => number[];
+  clearLocalStorage: () => void;
   selectedObjects: fabric.Object[];
 };

@@ -2,8 +2,9 @@
 
 import { Editor } from "@/features/editor/components/editor";
 
-const EditorProjectIdPage = () => {
+const NewEditorPage = () => {
   return <Editor />;
 };
  
-export default EditorProjectIdPage;
+export default NewEditorPage;
+
