@@ -142,92 +142,92 @@ export const createShapeLayer = (layer: ShapeLayer): Object => {
   return shape;
 };
 
-export const updateCanvasFromState = async (
-  canvas: Canvas,
-  state: CanvasState
-): Promise<void> => {
-  console.log('updateCanvasFromState called with:', state);
-  
-  // Set background
-  canvas.backgroundColor = state.backgroundColor;
+// Updated fabricSetup.ts with enhanced text-always-front logic
 
-  // Get existing objects to preserve transforms
+export const updateCanvasFromState = async (canvas: Canvas, state: CanvasState) => {
+  console.log('Updating canvas from state:', state);
+
   const existingObjects = canvas.getObjects();
-  const existingObjectsMap = new Map();
-  existingObjects.forEach(obj => {
-    const id = obj.get('id') as string;
-    if (id) {
-      existingObjectsMap.set(id, obj);
-    }
-  });
+  const existingObjectsMap = new Map(existingObjects.map(obj => [obj.get('id') as string, obj]));
 
-  // Update or add layers
-  const promises: Promise<void>[] = [];
-  
-  // Sort layers to ensure text is always on top
+  // Sort layers: non-text first, then text last (to ensure text is always on top)
   const sortedLayers = [...state.layers].sort((a, b) => {
-    // Text layers should always be on top
+    // Text layers should always come last (highest z-index)
     if (a.type === 'text' && b.type !== 'text') return 1;
     if (a.type !== 'text' && b.type === 'text') return -1;
-    // For same types, maintain original order
-    return 0;
+    return 0; // Keep original order for same types
   });
-  
+
+  console.log('Sorted layers for rendering:', sortedLayers);
+
   // Process non-text layers first
+  const promises = [];
   for (const layer of sortedLayers.filter(l => l.type !== 'text')) {
     try {
       const existingObject = existingObjectsMap.get(layer.id);
       
       if (existingObject) {
-        // Update existing object properties without recreating
         updateExistingObject(existingObject, layer, canvas);
-        promises.push(Promise.resolve());
       } else {
-        // Create new object only if it doesn't exist
-        let fabricObjectPromise: Promise<Object>;
-
-        switch (layer.type) {
-          case 'image':
-            fabricObjectPromise = createImageLayer(layer);
-            break;
-          case 'shape':
-            const shapeObject = createShapeLayer(layer);
-            fabricObjectPromise = Promise.resolve(shapeObject);
-            break;
-          default:
-            continue;
+        // Create new non-text object
+        let fabricObject: Object;
+        
+        if (layer.type === 'image') {
+          promises.push(
+            createImageLayer(layer).then(imgObject => {
+              console.log('Adding image fabric object to canvas:', imgObject);
+              
+              // Customize object selection styling
+              imgObject.set({
+                borderColor: '#3b82f6',
+                cornerColor: '#3b82f6',
+                cornerStrokeColor: '#ffffff',
+                cornerSize: 8,
+                cornerStyle: 'circle',
+                transparentCorners: false,
+                borderDashArray: [5, 5],
+                borderScaleFactor: 2,
+                hasRotatingPoint: true,
+                rotatingPointOffset: 30,
+              });
+              
+              canvas.add(imgObject);
+              
+              if (layer.id === state.selectedLayerId) {
+                canvas.setActiveObject(imgObject);
+              }
+              
+              console.log('Canvas objects after adding image:', imgObject);
+              canvas.renderAll();
+            })
+          );
+        } else if (layer.type === 'shape') {
+          const shapeObject = createShapeLayer(layer);
+          
+          console.log('Adding shape fabric object to canvas:', shapeObject);
+          
+          shapeObject.set({
+            borderColor: '#3b82f6',
+            cornerColor: '#3b82f6',
+            cornerStrokeColor: '#ffffff',
+            cornerSize: 8,
+            cornerStyle: 'circle',
+            transparentCorners: false,
+            borderDashArray: [5, 5],
+            borderScaleFactor: 2,
+            hasRotatingPoint: true,
+            rotatingPointOffset: 30,
+          });
+          
+          canvas.add(shapeObject);
+          
+          if (layer.id === state.selectedLayerId) {
+            canvas.setActiveObject(shapeObject);
+          }
+          
+          console.log('Canvas objects after adding shape:', shapeObject);
+          canvas.renderAll();
         }
-
-        promises.push(
-          fabricObjectPromise.then((fabricObject) => {
-            console.log('Adding non-text fabric object to canvas:', fabricObject);
-            
-            // Customize object selection styling
-            fabricObject.set({
-              borderColor: '#3b82f6',
-              cornerColor: '#3b82f6',
-              cornerStrokeColor: '#ffffff',
-              cornerSize: 8,
-              cornerStyle: 'circle',
-              transparentCorners: false,
-              borderDashArray: [5, 5],
-              borderScaleFactor: 2,
-              // Custom rotation handle styling
-              hasRotatingPoint: true,
-              rotatingPointOffset: 30,
-            });
-            
-            canvas.add(fabricObject);
-            
-            // Select layer if it's the selected one
-            if (layer.id === state.selectedLayerId) {
-              canvas.setActiveObject(fabricObject);
-            }
-            
-            console.log('Canvas objects after adding non-text:', fabricObject);
-            canvas.renderAll();
-          })
-        );
       }
     } catch (error) {
       console.error(`Error updating layer ${layer.id}:`, error);
@@ -237,13 +237,14 @@ export const updateCanvasFromState = async (
   // Wait for all non-text objects to be added first
   await Promise.all(promises);
   
-  // Now add text layers last to ensure they're on top
-  for (const layer of sortedLayers.filter(l => l.type === 'text')) {
+  // Now add text layers last to ensure they're always on top
+  const textLayers = sortedLayers.filter(l => l.type === 'text');
+  for (const layer of textLayers) {
     try {
       const existingObject = existingObjectsMap.get(layer.id);
       
       if (existingObject) {
-        // Update existing object properties without recreating
+        // Update existing text object properties without recreating
         updateExistingObject(existingObject, layer, canvas);
       } else {
         // Create new text object
@@ -261,14 +262,12 @@ export const updateCanvasFromState = async (
           transparentCorners: false,
           borderDashArray: [5, 5],
           borderScaleFactor: 2,
-          // Custom rotation handle styling
           hasRotatingPoint: true,
           rotatingPointOffset: 30,
         });
         
         canvas.add(textObject);
         
-        // Select layer if it's the selected one
         if (layer.id === state.selectedLayerId) {
           canvas.setActiveObject(textObject);
         }
@@ -281,27 +280,9 @@ export const updateCanvasFromState = async (
     }
   }
   
-  // Final step: ensure all text objects are at the top by reordering the canvas objects
-  // Use a more gentle approach that doesn't clear the canvas
-  const allObjects = canvas.getObjects();
-  const textObjects = allObjects.filter(obj => obj instanceof Text);
+  // CRITICAL: Force all text objects to the front after any changes
+  ensureTextAlwaysInFront(canvas);
   
-  // Instead of clearing, just reorder by moving text objects to the front
-  // Fabric.js renders objects in the order they're in the array, so we need to move text to the end
-  textObjects.forEach(textObj => {
-    // Remove and re-add the text object to move it to the end (top)
-    canvas.remove(textObj);
-    canvas.add(textObj);
-  });
-  
-  // Restore selection if needed
-  if (state.selectedLayerId) {
-    const selectedObj = allObjects.find(obj => obj.get('id') === state.selectedLayerId);
-    if (selectedObj) {
-      canvas.setActiveObject(selectedObj);
-    }
-  }
-
   // Remove objects that no longer exist in state
   existingObjects.forEach(obj => {
     const id = obj.get('id') as string;
@@ -312,6 +293,130 @@ export const updateCanvasFromState = async (
   
   console.log('Canvas objects after update:', canvas.getObjects());
   canvas.renderAll();
+};
+
+/**
+ * Ensures all text objects are always at the front (highest z-index)
+ * This function should be called whenever objects are added, moved, or modified
+ */
+export const ensureTextAlwaysInFront = (canvas: Canvas) => {
+  const allObjects = canvas.getObjects();
+  const textObjects = allObjects.filter(obj => obj instanceof Text);
+  const nonTextObjects = allObjects.filter(obj => !(obj instanceof Text));
+  
+  if (textObjects.length === 0) return; // No text objects to move
+  
+  console.log('Ensuring text objects are always in front:', textObjects.length);
+  
+  // Clear canvas and re-add objects in the correct order
+  canvas.clear();
+  
+  // Add non-text objects first
+  nonTextObjects.forEach(obj => {
+    canvas.add(obj);
+  });
+  
+  // Add text objects last (they will be on top)
+  textObjects.forEach(obj => {
+    canvas.add(obj);
+  });
+  
+  canvas.renderAll();
+};
+
+/**
+ * Alternative approach using bringToFront for each text object
+ * This is less disruptive but may be less reliable
+ */
+export const bringAllTextToFront = (canvas: Canvas) => {
+  const allObjects = canvas.getObjects();
+  const textObjects = allObjects.filter(obj => obj instanceof Text);
+  
+  // Bring each text object to front
+  textObjects.forEach(textObj => {
+    canvas.bringToFront(textObj);
+  });
+  
+  canvas.renderAll();
+};
+
+/**
+ * Hook into canvas events to ensure text stays in front
+ */
+export const setupTextAlwaysFrontListeners = (canvas: Canvas) => {
+  // When any object is added, ensure text stays on top
+  canvas.on('object:added', (e) => {
+    const obj = e.target;
+    if (!(obj instanceof Text)) {
+      // If a non-text object was added, move all text to front
+      setTimeout(() => bringAllTextToFront(canvas), 0);
+    }
+  });
+  
+  // When objects are moved or modified, ensure text stays on top
+  canvas.on('object:modified', () => {
+    setTimeout(() => bringAllTextToFront(canvas), 0);
+  });
+  
+  // When selection changes, ensure text stays on top
+  canvas.on('selection:created', () => {
+    setTimeout(() => bringAllTextToFront(canvas), 0);
+  });
+  
+  canvas.on('selection:updated', () => {
+    setTimeout(() => bringAllTextToFront(canvas), 0);
+  });
+};
+
+// Enhanced canvas initialization with text-always-front setup
+export const initializeCanvasWithTextPriority = (canvasElement: HTMLCanvasElement, width: number, height: number): Canvas => {
+  const canvas = initializeCanvas(canvasElement, width, height);
+  
+  // Set up listeners to ensure text always stays in front
+  setupTextAlwaysFrontListeners(canvas);
+  
+  return canvas;
+};
+
+// CSS to ensure text selection UI is always visible
+export const addTextPriorityStyles = () => {
+  const style = document.createElement('style');
+  style.textContent = `
+    .upper-canvas {
+      position: relative;
+      z-index: 1000;
+    }
+    
+    /* Ensure text selection controls are always visible */
+    .canvas-container .upper-canvas {
+      pointer-events: auto;
+    }
+    
+    /* Text objects should have higher visual priority */
+    .fabric-text-selected {
+      z-index: 9999 !important;
+    }
+    
+    /* Selection handles for text should be more prominent */
+    .upper-canvas .upper-canvas__selection-corner[data-text="true"] {
+      background: #ef4444 !important;
+      border: 2px solid #ffffff !important;
+      border-radius: 3px !important;
+      width: 10px !important;
+      height: 10px !important;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
+    }
+    
+    .upper-canvas .upper-canvas__selection-rotation-handle[data-text="true"] {
+      background: #ef4444 !important;
+      border: 2px solid #ffffff !important;
+      border-radius: 50% !important;
+      width: 14px !important;
+      height: 14px !important;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
+    }
+  `;
+  document.head.appendChild(style);
 };
 
 // Helper function to update existing objects without recreating them

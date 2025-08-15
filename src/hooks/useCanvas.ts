@@ -4,6 +4,61 @@ import { initializeCanvas, updateCanvasFromState, getCanvasState } from '../lib/
 import { CanvasState, Layer } from '../lib/utils/types';
 import { DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_BACKGROUND } from '../lib/utils/constants';
 
+// CORRECTED: Use the actual Fabric.js Canvas API method
+const ensureTextAlwaysInFront = (canvas: Canvas) => {
+  const allObjects = canvas.getObjects();
+  const textObjects = allObjects.filter(obj => obj instanceof Text);
+  
+  if (textObjects.length === 0) return;
+  
+  console.log('Ensuring text objects are always in front:', textObjects.length);
+  
+  // Use the correct Fabric.js Canvas method that actually exists
+  textObjects.forEach(textObj => {
+    try {
+      canvas.bringObjectToFront(textObj);
+    } catch (error) {
+      console.warn('Error bringing text to front:', error);
+    }
+  });
+  
+  canvas.renderAll();
+};
+
+// Alternative approach: reorder objects array directly
+const ensureTextAlwaysInFrontAlternative = (canvas: Canvas) => {
+  const allObjects = canvas.getObjects();
+  const textObjects = allObjects.filter(obj => obj instanceof Text);
+  const nonTextObjects = allObjects.filter(obj => !(obj instanceof Text));
+  
+  if (textObjects.length === 0) return;
+  
+  console.log('Using alternative approach to ensure text is in front');
+  
+  // Store current selection
+  const activeObject = canvas.getActiveObject();
+  const activeObjectId = activeObject ? activeObject.get('id') : null;
+  
+  // Clear and rebuild in correct order
+  canvas.clear();
+  
+  // Add non-text objects first
+  nonTextObjects.forEach(obj => canvas.add(obj));
+  
+  // Add text objects last (they will be on top)
+  textObjects.forEach(obj => canvas.add(obj));
+  
+  // Restore selection
+  if (activeObjectId) {
+    const objectToSelect = canvas.getObjects().find(obj => obj.get('id') === activeObjectId);
+    if (objectToSelect) {
+      canvas.setActiveObject(objectToSelect);
+    }
+  }
+  
+  canvas.renderAll();
+};
+
 export const useCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<Canvas | null>(null);
@@ -21,6 +76,9 @@ export const useCanvas = () => {
   
   // Create a stable reference to the fabric canvas
   const fabricCanvasRefStable = useRef<Canvas | null>(null);
+
+  // Track if we're currently enforcing text priority to prevent infinite loops
+  const isEnforcingTextPriorityRef = useRef(false);
 
   // Custom text editor function - hybrid approach for compatibility
   const createTextEditor = useCallback((canvas: Canvas, textObject: any) => { // 'any' for type bypass
@@ -206,6 +264,33 @@ export const useCanvas = () => {
     }
   }, []);
 
+  // SAFE: Throttled text priority function to prevent infinite loops
+  const enforceTextPriority = useCallback((canvas: Canvas) => {
+    if (isEnforcingTextPriorityRef.current) {
+      console.log('Text priority enforcement already in progress, skipping...');
+      return;
+    }
+    
+    isEnforcingTextPriorityRef.current = true;
+    
+    try {
+      ensureTextAlwaysInFront(canvas);
+    } catch (error) {
+      console.warn('Error enforcing text priority:', error);
+      // Fallback to alternative method
+      try {
+        ensureTextAlwaysInFrontAlternative(canvas);
+      } catch (altError) {
+        console.error('Both text priority methods failed:', altError);
+      }
+    } finally {
+      // Clear the flag after a short delay
+      setTimeout(() => {
+        isEnforcingTextPriorityRef.current = false;
+      }, 100);
+    }
+  }, []);
+
   // Initialize canvas only once
   useEffect(() => {
     console.log('useEffect for canvas initialization running');
@@ -255,16 +340,34 @@ export const useCanvas = () => {
             }),
             selectedLayerId: prev.selectedLayerId,
           }));
+          
+          // SAFE: Ensure text stays in front after modifications
+          setTimeout(() => {
+            enforceTextPriority(canvas);
+          }, 50);
         }
       });
 
-      // Test basic click events first
+      // SAFE: Enhanced mouse down handler
       canvas.on('mouse:down', (e) => {
         console.log('Mouse down detected!', e);
+        
+        // If clicking on a non-text object, schedule text to front
+        if (e.target && !(e.target instanceof Text)) {
+          setTimeout(() => {
+            enforceTextPriority(canvas);
+          }, 0);
+        }
       });
 
+      // SAFE: Enhanced mouse up handler
       canvas.on('mouse:up', (e) => {
         console.log('Mouse up detected!', e);
+        
+        // Always ensure text is in front after any mouse interaction
+        setTimeout(() => {
+          enforceTextPriority(canvas);
+        }, 50);
       });
 
       canvas.on('click', (e) => {
@@ -321,9 +424,6 @@ export const useCanvas = () => {
         console.log('=== DOUBLE-CLICK DEBUG END ===');
       });
 
-      // Remove the broken editing:exited event
-      // canvas.on('editing:exited', (e: any) => { ... });
-
       canvas.on('object:moving', () => {
         // Don't update state during movement, only on completion
       });
@@ -336,10 +436,29 @@ export const useCanvas = () => {
         // Don't update state during rotation, only on completion
       });
 
+      // SAFE: Enhanced selection:created handler
       canvas.on('selection:created', (e) => {
         if (!isUpdatingRef.current && e.selected && e.selected.length > 0) {
           const selectedId = e.selected[0].get('id');
           setCanvasState(prev => ({ ...prev, selectedLayerId: selectedId }));
+          
+          // SAFE: Ensure text stays in front after selection
+          setTimeout(() => {
+            enforceTextPriority(canvas);
+          }, 0);
+        }
+      });
+
+      // SAFE: Add selection:updated handler
+      canvas.on('selection:updated', (e) => {
+        if (!isUpdatingRef.current && e.selected && e.selected.length > 0) {
+          const selectedId = e.selected[0].get('id');
+          setCanvasState(prev => ({ ...prev, selectedLayerId: selectedId }));
+          
+          // SAFE: Ensure text stays in front after selection change
+          setTimeout(() => {
+            enforceTextPriority(canvas);
+          }, 0);
         }
       });
 
@@ -353,6 +472,14 @@ export const useCanvas = () => {
         if (!isUpdatingRef.current) {
           const newState = getCanvasState(canvas);
           setCanvasState(newState);
+        }
+      });
+
+      // SAFE: Add object:added handler without method overrides
+      canvas.on('object:added', (e) => {
+        const obj = e.target;
+        if (!(obj instanceof Text)) {
+          setTimeout(() => enforceTextPriority(canvas), 0);
         }
       });
 
@@ -401,6 +528,11 @@ export const useCanvas = () => {
         .then(() => {
           console.log('Canvas updated successfully');
           isUpdatingRef.current = false;
+          
+          // SAFE: Ensure text stays in front after canvas updates
+          setTimeout(() => {
+            enforceTextPriority(fabricCanvasRef.current!);
+          }, 50);
         })
         .catch((error) => {
           console.error('Error updating canvas:', error);
@@ -409,7 +541,7 @@ export const useCanvas = () => {
     } else {
       console.log('Canvas not ready yet. Waiting...');
     }
-  }, [canvasState.layers]); // Remove isCanvasReady from dependencies
+  }, [canvasState.layers, enforceTextPriority]); // Add enforceTextPriority to dependencies
 
   const updateCanvasSize = useCallback((width: number, height: number) => {
     if (fabricCanvasRef.current && isCanvasReady) {
@@ -459,6 +591,7 @@ export const useCanvas = () => {
     }));
   }, [isCanvasReady]);
 
+  // SAFE: Enhanced selectLayer with text priority
   const selectLayer = useCallback((layerId: string | null) => {
     if (fabricCanvasRef.current && isCanvasReady) {
       isUpdatingRef.current = true;
@@ -468,6 +601,11 @@ export const useCanvas = () => {
         const targetObject = objects.find(obj => obj.get('id') === layerId);
         if (targetObject) {
           fabricCanvasRef.current.setActiveObject(targetObject);
+          
+          // SAFE: Ensure text stays in front after programmatic selection
+          setTimeout(() => {
+            enforceTextPriority(fabricCanvasRef.current!);
+          }, 0);
         }
       } else {
         fabricCanvasRef.current.discardActiveObject();
@@ -476,12 +614,11 @@ export const useCanvas = () => {
       fabricCanvasRef.current.renderAll();
       setCanvasState(prev => ({ ...prev, selectedLayerId: layerId }));
       
-      // Small delay to prevent race conditions
       setTimeout(() => {
         isUpdatingRef.current = false;
       }, 10);
     }
-  }, [isCanvasReady]);
+  }, [isCanvasReady, enforceTextPriority]);
 
   const getSelectedLayer = useCallback(() => {
     if (!canvasState.selectedLayerId) return null;

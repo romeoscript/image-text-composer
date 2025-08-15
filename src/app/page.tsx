@@ -1,21 +1,24 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Canvas, Toolbar, Sidebar, LayerPanel, ExportModal } from '../components';
+import { Toolbar, Sidebar, LayerPanel, ExportModal } from '../components';
 import { FloatingToolbar } from '../components/Editor/FloatingToolbar';
 import { FloatingActionBar } from '../components/Editor/FloatingActionBar';
-import { useCanvas } from '../hooks/useCanvas';
+import { useKonvaCanvas } from '../hooks/useKonvaCanvas';
+import dynamic from 'next/dynamic';
+
+// Dynamically import KonvaCanvas to avoid SSR issues
+const KonvaCanvas = dynamic(() => import('../components/Editor/KonvaCanvas').then(mod => ({ default: mod.KonvaCanvas })), { 
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center bg-gray-100">Loading canvas...</div>
+});
 import { useAutosave } from '../hooks/useAutosave';
-import { useHistory } from '../hooks/useHistory';
 import { saveToLocalStorage, loadFromLocalStorage } from '../lib/storage/localStorage';
-import { exportCanvas } from '../lib/canvas/export';
+import { exportCanvasState } from '../lib/canvas/konvaExport';
 import { ExportOptions, TextLayer, ImageLayer, ShapeLayer } from '../lib/utils/types';
-import { generateId } from '../lib/utils/helpers';
 
 export default function Home() {
   const {
-    canvasRef,
-    fabricCanvas,
     canvasState,
     updateLayer,
     removeLayer,
@@ -26,7 +29,7 @@ export default function Home() {
     setBackgroundColor,
     addLayer,
     clearCanvas,
-  } = useCanvas();
+  } = useKonvaCanvas();
 
   // Floating toolbar state
   const [toolbarPosition, setToolbarPosition] = useState<{ x: number; y: number } | null>(null);
@@ -60,30 +63,11 @@ export default function Home() {
   }, [canvasState.selectedLayerId, handleSelectionChange]);
 
   // Track interaction states to hide action bar during manipulation
-  React.useEffect(() => {
-    if (!fabricCanvas) return;
-
-    const handleInteractionStart = () => setIsInteracting(true);
-    const handleInteractionEnd = () => {
-      // Small delay to prevent flickering and ensure interaction is truly complete
-      setTimeout(() => setIsInteracting(false), 100);
-    };
-
-    // Listen for object manipulation events
-    fabricCanvas.on('object:moving', handleInteractionStart);
-    fabricCanvas.on('object:scaling', handleInteractionStart);
-    fabricCanvas.on('object:rotating', handleInteractionStart);
-    fabricCanvas.on('object:modified', handleInteractionEnd);
-    fabricCanvas.on('mouse:up', handleInteractionEnd);
-
-    return () => {
-      fabricCanvas.off('object:moving', handleInteractionStart);
-      fabricCanvas.off('object:scaling', handleInteractionStart);
-      fabricCanvas.off('object:rotating', handleInteractionStart);
-      fabricCanvas.off('object:modified', handleInteractionEnd);
-      fabricCanvas.off('mouse:up', handleInteractionEnd);
-    };
-  }, [fabricCanvas]);
+  // Note: Konva handles interactions differently, so we'll use a simpler approach
+  const handleInteractionStart = useCallback(() => setIsInteracting(true), []);
+  const handleInteractionEnd = useCallback(() => {
+    setTimeout(() => setIsInteracting(false), 100);
+  }, []);
 
   // Enable autosave
   useAutosave(canvasState);
@@ -98,9 +82,7 @@ export default function Home() {
   };
 
   const handleExportConfirm = (options: ExportOptions) => {
-    if (fabricCanvas) {
-      exportCanvas(fabricCanvas, options);
-    }
+    exportCanvasState(canvasState, options);
     setShowExportModal(false);
   };
 
@@ -108,25 +90,12 @@ export default function Home() {
 
   // Get selection position for action bar
   const getSelectionPosition = useCallback(() => {
-    if (!canvasState.selectedLayerId || !fabricCanvas) return null;
+    if (!canvasState.selectedLayerId) return null;
     
-    const selectedObject = fabricCanvas.getActiveObject();
-    if (!selectedObject) return null;
-    
-    // Get the actual object bounds including any scaling/rotation
-    const boundingRect = selectedObject.getBoundingRect();
-    const canvasElement = fabricCanvas.getElement();
-    const canvasRect = canvasElement.getBoundingClientRect();
-    const zoom = fabricCanvas.getZoom();
-    
-    // Convert canvas coordinates to viewport coordinates
-    const left = (boundingRect.left * zoom) + canvasRect.left;
-    const top = (boundingRect.top * zoom) + canvasRect.top;
-    const width = boundingRect.width * zoom;
-    const height = boundingRect.height * zoom;
-    
-    return { x: left, y: top, width, height };
-  }, [canvasState.selectedLayerId, fabricCanvas]);
+    // TODO: Implement Konva selection position calculation
+    // For now, return a default position
+    return { x: 100, y: 100, width: 200, height: 100 };
+  }, [canvasState.selectedLayerId]);
 
   const selectionPosition = getSelectionPosition();
 
@@ -159,11 +128,12 @@ export default function Home() {
 
             {/* Center - Canvas */}
             <div className="flex-1 relative">
-              <Canvas 
-                canvasRef={canvasRef}
+              <KonvaCanvas 
                 canvasState={canvasState}
                 updateCanvasSize={updateCanvasSize}
                 setBackgroundColor={setBackgroundColor}
+                onLayerSelect={selectLayer}
+                onLayerUpdate={updateLayer}
               />
               <FloatingToolbar
                 selectedLayer={getSelectedLayer() as TextLayer}
