@@ -89,7 +89,8 @@ export type ActiveTool =
   | "settings"
   | "ai"
   | "remove-bg"
-  | "templates";
+  | "templates"
+  | "text-enhancement";
 
 export const FILL_COLOR = "rgba(0,0,0,1)";
 export const STROKE_COLOR = "rgba(0,0,0,1)";
@@ -98,6 +99,15 @@ export const STROKE_DASH_ARRAY = [];
 export const FONT_FAMILY = "Arial";
 export const FONT_SIZE = 32;
 export const FONT_WEIGHT = 400;
+export const LINE_HEIGHT = 1.2;
+export const LETTER_SPACING = 0;
+export const TEXT_SHADOW = {
+  color: "rgba(0,0,0,0.3)",
+  blur: 4,
+  offsetX: 2,
+  offsetY: 2,
+  enabled: false
+};
 
 export const FONT_WEIGHTS = [
   { value: 100, label: "Thin" },
@@ -190,11 +200,17 @@ export type BuildEditorProps = {
   selectedObjects: fabric.Object[];
   strokeDashArray: number[];
   fontFamily: string;
+  lineHeight: number;
+  letterSpacing: number;
+  textShadow: { color: string; blur: number; offsetX: number; offsetY: number; enabled: boolean };
   setStrokeDashArray: (value: number[]) => void;
   setFillColor: (value: string) => void;
   setStrokeColor: (value: string) => void;
   setStrokeWidth: (value: number) => void;
   setFontFamily: (value: string) => void;
+  setLineHeight: (value: number) => void;
+  setLetterSpacing: (value: number) => void;
+  setTextShadow: (shadow: { color?: string; blur?: number; offsetX?: number; offsetY?: number; enabled?: boolean }) => void;
 };
 
 export interface Editor {
@@ -234,11 +250,19 @@ export interface Editor {
   getActiveFontWeight: () => number;
   getActiveFontFamily: () => string;
   changeFontFamily: (value: string) => void;
+  changeLineHeight: (value: number) => void;
+  getActiveLineHeight: () => number;
+  changeLetterSpacing: (value: number) => void;
+  getActiveLetterSpacing: () => number;
+  changeTextShadow: (shadow: { color?: string; blur?: number; offsetX?: number; offsetY?: number; enabled?: boolean }) => void;
+  getActiveTextShadow: () => { color: string; blur: number; offsetX: number; offsetY: number; enabled: boolean };
   nudgeObjects: (direction: 'up' | 'down' | 'left' | 'right', amount?: number) => void;
   getNudgeAmount: () => number;
   setNudgeAmount: (amount: number) => void;
   snapToCenter: () => void;
   snapToPosition: (position: 'center' | 'left' | 'right' | 'top' | 'bottom') => void;
+  toggleLockLayer: () => void;
+  isLayerLocked: () => boolean;
   addText: (value: string, options?: ITextboxOptions) => void;
   getActiveOpacity: () => number;
   changeOpacity: (value: number) => void;

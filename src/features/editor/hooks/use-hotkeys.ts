@@ -9,9 +9,10 @@ interface UseHotkeysProps {
   copy: () => void;
   paste: () => void;
   snapToCenter: () => void;
+  toggleLockLayer: () => void;
 }
 
-export const useHotkeys = ({ canvas, undo, redo, save, copy, paste, snapToCenter }: UseHotkeysProps) => {
+export const useHotkeys = ({ canvas, undo, redo, save, copy, paste, snapToCenter, toggleLockLayer }: UseHotkeysProps) => {
   useEvent("keydown", (event) => {
     const isCtrlKey = event.ctrlKey || event.metaKey;
     const isBackspace = event.key === "Backspace";
@@ -77,6 +78,11 @@ export const useHotkeys = ({ canvas, undo, redo, save, copy, paste, snapToCenter
       // This would need to be passed from the editor
       // For now, just snap to center
       snapToCenter();
+    }
+
+    if (isCtrlKey && event.key === "l") {
+      event.preventDefault();
+      toggleLockLayer();
     }
 
     // Arrow key nudging for precise positioning

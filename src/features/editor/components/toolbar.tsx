@@ -19,7 +19,10 @@ import {
   Trash,
   SquareSplitHorizontal,
   Copy,
-  Move
+  Move,
+  Lock,
+  Unlock,
+  Type
 } from "lucide-react";
 
 import { isTextType } from "@/features/editor/utils";
@@ -357,6 +360,22 @@ export const Toolbar = ({
          />
         </div>
       )}
+      {isText && (
+        <div className="flex items-center h-full justify-center">
+          <Hint label="Text Enhancement" side="bottom" sideOffset={5}>
+            <Button
+              onClick={() => onChangeActiveTool("text-enhancement")}
+              size="icon"
+              variant="ghost"
+              className={cn(
+                activeTool === "text-enhancement" && "bg-gray-100"
+              )}
+            >
+              <Type className="size-4" />
+            </Button>
+          </Hint>
+        </div>
+      )}
       {isImage && (
         <div className="flex items-center h-full justify-center">
           <Hint label="Filters" side="bottom" sideOffset={5}>
@@ -449,6 +468,26 @@ export const Toolbar = ({
             )}
           >
             <Move className="size-4" />
+          </Button>
+        </Hint>
+      </div>
+      <div className="flex items-center h-full justify-center">
+        <Hint label="Toggle lock layer (Ctrl+L)" side="bottom" sideOffset={5}>
+          <Button
+            onClick={() => editor?.toggleLockLayer()}
+            size="icon"
+            variant="ghost"
+            disabled={!editor?.selectedObjects.length}
+            className={cn(
+              !editor?.selectedObjects.length && "opacity-50 cursor-not-allowed",
+              editor?.isLayerLocked() && "bg-red-100 text-red-600"
+            )}
+          >
+            {editor?.isLayerLocked() ? (
+              <Lock className="size-4" />
+            ) : (
+              <Unlock className="size-4" />
+            )}
           </Button>
         </Hint>
       </div>

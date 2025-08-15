@@ -23,6 +23,7 @@ import { ImageSidebar } from "@/features/editor/components/image-sidebar";
 
 import { FilterSidebar } from "@/features/editor/components/filter-sidebar";
 import { DrawSidebar } from "@/features/editor/components/draw-sidebar";
+import { TextEnhancementSidebar } from "@/features/editor/components/text-enhancement-sidebar";
 
 
 
@@ -143,6 +144,11 @@ export const Editor = () => {
           onChangeActiveTool={onChangeActiveTool}
         />
         <FontSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
+        <TextEnhancementSidebar
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}

@@ -18,6 +18,9 @@ import {
   FONT_FAMILY,
   FONT_WEIGHT,
   FONT_SIZE,
+  LINE_HEIGHT,
+  LETTER_SPACING,
+  TEXT_SHADOW,
   JSON_KEYS,
 } from "@/features/editor/types";
 import { useHistory } from "@/features/editor/hooks/use-history";
@@ -189,6 +192,60 @@ const buildEditor = ({
 
     canvas.renderAll();
     save();
+  };
+
+  const toggleLockLayer = () => {
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length === 0) return;
+
+    // Check the current lock status using a custom property
+    const wasLocked = activeObjects[0]?.get('_isLocked') || false;
+    
+    activeObjects.forEach((obj) => {
+      const newLockState = !wasLocked;
+      
+      if (newLockState) {
+        // LOCKING: Make object non-editable but keep it selectable
+        obj.set({
+          evented: false,           // Can't interact with mouse/keyboard
+          hasControls: false,       // No resize handles
+          hasBorders: false,        // No selection border
+          selectable: true,         // Keep selectable so it can be unlocked
+          _isLocked: true          // Mark as locked
+        });
+      } else {
+        // UNLOCKING: Make object fully editable
+        obj.set({
+          evented: true,            // Can interact normally
+          hasControls: true,        // Show resize handles
+          hasBorders: true,         // Show selection border
+          selectable: true,         // Keep selectable
+          _isLocked: false         // Mark as unlocked
+        });
+      }
+    });
+
+    canvas.renderAll();
+    save();
+    
+    // Show the new lock status
+    const newLockStatus = !wasLocked;
+    toast.success(`Layer${activeObjects.length > 1 ? 's' : ''} ${newLockStatus ? 'locked' : 'unlocked'}`);
+    
+    // Clear selection after locking to show the locked state
+    if (newLockStatus) {
+      canvas.discardActiveObject();
+      canvas.renderAll();
+    }
+  };
+
+  const isLayerLocked = () => {
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length === 0) return false;
+    
+    // Check if the first selected object is locked using custom property
+    // All objects in a selection should have the same lock state
+    return activeObjects[0]?.get('_isLocked') || false;
   };
 
   const addToCanvas = (object: fabric.Object) => {
@@ -431,6 +488,95 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+    },
+    changeLineHeight: (value: number) => {
+      canvas.getActiveObjects().forEach((object) => {
+        if (isTextType(object.type)) {
+          // @ts-ignore
+          // Faulty TS library, lineHeight exists.
+          object.set({ lineHeight: value });
+        }
+      });
+      canvas.renderAll();
+    },
+    getActiveLineHeight: () => {
+      const selectedObject = selectedObjects[0];
+
+      if (!selectedObject) {
+        return LINE_HEIGHT;
+      }
+
+      // @ts-ignore
+      // Faulty TS library, lineHeight exists.
+      const value = selectedObject.get("lineHeight") || LINE_HEIGHT;
+
+      return value;
+    },
+    changeLetterSpacing: (value: number) => {
+      canvas.getActiveObjects().forEach((object) => {
+        if (isTextType(object.type)) {
+          // @ts-ignore
+          // Faulty TS library, charSpacing exists.
+          object.set({ charSpacing: value });
+        }
+      });
+      canvas.renderAll();
+    },
+    getActiveLetterSpacing: () => {
+      const selectedObject = selectedObjects[0];
+
+      if (!selectedObject) {
+        return LETTER_SPACING;
+      }
+
+      // @ts-ignore
+      // Faulty TS library, charSpacing exists.
+      const value = selectedObject.get("charSpacing") || LETTER_SPACING;
+
+      return value;
+    },
+    changeTextShadow: (shadow: { color?: string; blur?: number; offsetX?: number; offsetY?: number; enabled?: boolean }) => {
+      canvas.getActiveObjects().forEach((object) => {
+        if (isTextType(object.type)) {
+          if (shadow.enabled === false) {
+            object.set({ shadow: null });
+          } else {
+            const newShadow = new fabric.Shadow({
+              color: shadow.color || TEXT_SHADOW.color,
+              blur: shadow.blur || TEXT_SHADOW.blur,
+              offsetX: shadow.offsetX || TEXT_SHADOW.offsetX,
+              offsetY: shadow.offsetY || TEXT_SHADOW.offsetY,
+            });
+            object.set({ shadow: newShadow });
+          }
+        }
+      });
+      canvas.renderAll();
+    },
+    getActiveTextShadow: () => {
+      const selectedObject = selectedObjects[0];
+
+      if (!selectedObject) {
+        return TEXT_SHADOW;
+      }
+
+      const shadow = selectedObject.get("shadow");
+      if (!shadow) {
+        return { ...TEXT_SHADOW, enabled: false };
+      }
+
+      // Handle both string and Shadow object types
+      if (typeof shadow === 'string') {
+        return { ...TEXT_SHADOW, enabled: true };
+      }
+
+      return {
+        color: shadow.color || TEXT_SHADOW.color,
+        blur: shadow.blur || TEXT_SHADOW.blur,
+        offsetX: shadow.offsetX || TEXT_SHADOW.offsetX,
+        offsetY: shadow.offsetY || TEXT_SHADOW.offsetY,
+        enabled: true
+      };
     },
     nudgeObjects: (direction: 'up' | 'down' | 'left' | 'right', amount: number = 1) => {
       const activeObjects = canvas.getActiveObjects();
@@ -727,6 +873,8 @@ const buildEditor = ({
     },
     snapToCenter,
     snapToPosition,
+    toggleLockLayer,
+    isLayerLocked,
     selectedObjects,
   };
 };
@@ -812,6 +960,43 @@ export const useEditor = ({
     }
   }, [canvas, save]);
 
+  const toggleLockLayer = useCallback(() => {
+    if (canvas) {
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length === 0) {
+        toast.error("No objects selected");
+        return;
+      }
+
+      activeObjects.forEach((obj) => {
+        const isLocked = obj.get('selectable') === false;
+        obj.set({
+          selectable: !isLocked,
+          evented: !isLocked,
+          hasControls: !isLocked,
+          hasBorders: !isLocked,
+        });
+
+        // Add visual lock indicator
+        if (!isLocked) {
+          // Locking - add lock icon
+          obj.set('lockIcon', true);
+        } else {
+          // Unlocking - remove lock icon
+          obj.set('lockIcon', false);
+        }
+      });
+
+      canvas.renderAll();
+      save();
+      
+      const lockStatus = activeObjects[0]?.get('selectable') === false;
+      toast.success(`Layer${activeObjects.length > 1 ? 's' : ''} ${lockStatus ? 'locked' : 'unlocked'}`);
+    }
+  }, [canvas, save]);
+
+
+
 
 
   useHotkeys({
@@ -822,6 +1007,7 @@ export const useEditor = ({
     save,
     canvas,
     snapToCenter,
+    toggleLockLayer,
   });
 
   useLoadState({
@@ -855,6 +1041,9 @@ export const useEditor = ({
         setStrokeDashArray,
         fontFamily,
         setFontFamily,
+        lineHeight: LINE_HEIGHT,
+        letterSpacing: LETTER_SPACING,
+        textShadow: TEXT_SHADOW,
       });
     }
 
