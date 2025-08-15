@@ -39,26 +39,8 @@ export const filters = [
   "gamma",
 ];
 
-export const fonts = [
-  "Arial",
-  "Arial Black",
-  "Verdana",
-  "Helvetica",
-  "Tahoma",
-  "Trebuchet MS",
-  "Times New Roman",
-  "Georgia",
-  "Garamond",
-  "Courier New",
-  "Brush Script MT",
-  "Palatino",
-  "Bookman",
-  "Comic Sans MS",
-  "Impact",
-  "Lucida Sans Unicode",
-  "Geneva",
-  "Lucida Console",
-];
+// Fonts are now loaded from Google Fonts API
+// See src/lib/google-fonts.ts for implementation
 
 export const selectionDependentTools = [
   "fill",
@@ -255,6 +237,8 @@ export interface Editor {
   nudgeObjects: (direction: 'up' | 'down' | 'left' | 'right', amount?: number) => void;
   getNudgeAmount: () => number;
   setNudgeAmount: (amount: number) => void;
+  snapToCenter: () => void;
+  snapToPosition: (position: 'center' | 'left' | 'right' | 'top' | 'bottom') => void;
   addText: (value: string, options?: ITextboxOptions) => void;
   getActiveOpacity: () => number;
   changeOpacity: (value: number) => void;

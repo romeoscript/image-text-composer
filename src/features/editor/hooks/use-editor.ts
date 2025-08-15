@@ -1,5 +1,6 @@
 import { fabric } from "fabric";
 import { useCallback, useState, useMemo, useRef } from "react";
+import { toast } from "sonner";
 
 import { 
   Editor, 
@@ -131,6 +132,63 @@ const buildEditor = ({
 
     // @ts-ignore
     canvas._centerObject(object, center);
+  };
+
+  const snapToCenter = () => {
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length === 0) return;
+
+    const workspace = getWorkspace();
+    if (!workspace) return;
+
+    const workspaceCenter = workspace.getCenterPoint();
+    if (!workspaceCenter) return;
+
+    activeObjects.forEach((obj) => {
+      // @ts-ignore
+      canvas._centerObject(obj, workspaceCenter);
+    });
+
+    canvas.renderAll();
+    save();
+  };
+
+  const snapToPosition = (position: 'center' | 'left' | 'right' | 'top' | 'bottom') => {
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length === 0) return;
+
+    const workspace = getWorkspace();
+    if (!workspace) return;
+
+    const workspaceBounds = workspace.getBoundingRect();
+    const workspaceCenter = workspace.getCenterPoint();
+    if (!workspaceCenter) return;
+
+    activeObjects.forEach((obj) => {
+      const objBounds = obj.getBoundingRect();
+      
+      switch (position) {
+        case 'center':
+          // @ts-ignore
+          canvas._centerObject(obj, workspaceCenter);
+          break;
+        case 'left':
+          obj.set({ left: workspaceBounds.left + objBounds.width / 2 });
+          break;
+        case 'right':
+          obj.set({ left: workspaceBounds.left + workspaceBounds.width - objBounds.width / 2 });
+          break;
+        case 'top':
+          obj.set({ top: workspaceBounds.top + objBounds.height / 2 });
+          break;
+        case 'bottom':
+          obj.set({ top: workspaceBounds.top + workspaceBounds.height - objBounds.height / 2 });
+          break;
+      }
+    });
+
+    canvas.renderAll();
+    save();
   };
 
   const addToCanvas = (object: fabric.Object) => {
@@ -667,6 +725,8 @@ const buildEditor = ({
         console.error('Failed to clear localStorage:', error);
       }
     },
+    snapToCenter,
+    snapToPosition,
     selectedObjects,
   };
 };
@@ -721,6 +781,39 @@ export const useEditor = ({
     clearSelectionCallback,
   });
 
+  const snapToCenter = useCallback(() => {
+    if (canvas) {
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length === 0) {
+        toast.error("No objects selected");
+        return;
+      }
+
+      const workspace = canvas.getObjects().find((object) => object.name === "clip");
+      if (!workspace) {
+        toast.error("Workspace not found");
+        return;
+      }
+
+      const workspaceCenter = workspace.getCenterPoint();
+      if (!workspaceCenter) {
+        toast.error("Could not determine workspace center");
+        return;
+      }
+
+      activeObjects.forEach((obj) => {
+        // @ts-ignore
+        canvas._centerObject(obj, workspaceCenter);
+      });
+
+      canvas.renderAll();
+      save();
+      toast.success(`Snapped ${activeObjects.length} object${activeObjects.length > 1 ? 's' : ''} to center`);
+    }
+  }, [canvas, save]);
+
+
+
   useHotkeys({
     undo,
     redo,
@@ -728,6 +821,7 @@ export const useEditor = ({
     paste,
     save,
     canvas,
+    snapToCenter,
   });
 
   useLoadState({

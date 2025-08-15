@@ -8,9 +8,10 @@ interface UseHotkeysProps {
   save: (skip?: boolean) => void;
   copy: () => void;
   paste: () => void;
+  snapToCenter: () => void;
 }
 
-export const useHotkeys = ({ canvas, undo, redo, save, copy, paste }: UseHotkeysProps) => {
+export const useHotkeys = ({ canvas, undo, redo, save, copy, paste, snapToCenter }: UseHotkeysProps) => {
   useEvent("keydown", (event) => {
     const isCtrlKey = event.ctrlKey || event.metaKey;
     const isBackspace = event.key === "Backspace";
@@ -63,6 +64,19 @@ export const useHotkeys = ({ canvas, undo, redo, save, copy, paste }: UseHotkeys
 
       canvas?.setActiveObject(new fabric.ActiveSelection(allObjects, { canvas }));
       canvas?.renderAll();
+    }
+
+    if (isCtrlKey && event.key === "m") {
+      event.preventDefault();
+      snapToCenter();
+    }
+
+    // Additional snap shortcuts
+    if (isCtrlKey && event.key === "1") {
+      event.preventDefault();
+      // This would need to be passed from the editor
+      // For now, just snap to center
+      snapToCenter();
     }
 
     // Arrow key nudging for precise positioning

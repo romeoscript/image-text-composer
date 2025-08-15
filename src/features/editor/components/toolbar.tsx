@@ -18,7 +18,8 @@ import {
   AlignRight,
   Trash,
   SquareSplitHorizontal,
-  Copy
+  Copy,
+  Move
 } from "lucide-react";
 
 import { isTextType } from "@/features/editor/utils";
@@ -433,6 +434,21 @@ export const Toolbar = ({
             variant="ghost"
           >
             <Copy className="size-4" />
+          </Button>
+        </Hint>
+      </div>
+      <div className="flex items-center h-full justify-center">
+        <Hint label="Snap to center (Ctrl+M)" side="bottom" sideOffset={5}>
+          <Button
+            onClick={() => editor?.snapToCenter()}
+            size="icon"
+            variant="ghost"
+            disabled={!editor?.selectedObjects.length}
+            className={cn(
+              !editor?.selectedObjects.length && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Move className="size-4" />
           </Button>
         </Hint>
       </div>

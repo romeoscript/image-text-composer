@@ -1,11 +1,11 @@
 import { 
   ActiveTool, 
   Editor,
-  fonts,
   FONT_WEIGHTS,
 } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
+import { useGoogleFonts } from "@/features/editor/hooks/use-google-fonts";
 
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,8 +24,17 @@ export const FontSidebar = ({
   onChangeActiveTool,
 }: FontSidebarProps) => {
   const [activeTab, setActiveTab] = useState<'family' | 'weight'>('family');
+  const [searchQuery, setSearchQuery] = useState('');
   const fontFamily = editor?.getActiveFontFamily();
   const fontWeight = editor?.getActiveFontWeight();
+  
+  const { 
+    fonts, 
+    loading, 
+    error, 
+    selectFont, 
+    searchFonts 
+  } = useGoogleFonts();
 
   const onClose = () => {
     onChangeActiveTool("select");
@@ -73,25 +82,63 @@ export const FontSidebar = ({
           {/* Tab Content */}
           {activeTab === 'family' && (
             <div className="space-y-1 pt-2">
-              {fonts.map((font) => (
-                <Button
-                  key={font}
-                  variant="secondary"
-                  size="lg"
-                  className={cn(
-                    "w-full h-16 justify-start text-left",
-                    fontFamily === font && "border-2 border-blue-500",
-                  )}
-                  style={{
-                    fontFamily: font,
-                    fontSize: "16px",
-                    padding: "8px 16px"
-                  }}
-                  onClick={() => editor?.changeFontFamily(font)}
-                >
-                  {font}
-                </Button>
-              ))}
+              {/* Search Input */}
+              <div className="mb-3">
+                <input
+                  type="text"
+                  placeholder="Search fonts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              {/* Loading State */}
+              {loading && (
+                <div className="text-center py-8">
+                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-500">Loading fonts...</p>
+                </div>
+              )}
+              
+              {/* Error State */}
+              {error && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-red-500 mb-2">Failed to load fonts</p>
+                  <p className="text-xs text-gray-500">Using fallback fonts</p>
+                </div>
+              )}
+              
+              {/* Fonts List */}
+              {!loading && !error && (
+                <div className="space-y-1 max-h-96 overflow-y-auto">
+                  {searchFonts(searchQuery).map((font) => (
+                    <Button
+                      key={font.family}
+                      variant="secondary"
+                      size="lg"
+                      className={cn(
+                        "w-full h-16 justify-start text-left",
+                        fontFamily === font.family && "border-2 border-blue-500",
+                      )}
+                      style={{
+                        fontFamily: font.family,
+                        fontSize: "16px",
+                        padding: "8px 16px"
+                      }}
+                      onClick={async () => {
+                        await selectFont(font.family);
+                        editor?.changeFontFamily(font.family);
+                      }}
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{font.family}</span>
+                        <span className="text-xs text-gray-500 capitalize">{font.category}</span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
