@@ -1,62 +1,28 @@
-import React from 'react';
+"use client"
 
-interface SliderProps {
-  label?: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  onChange: (value: number) => void;
-  className?: string;
-  showValue?: boolean;
-  disabled?: boolean;
-}
+import * as React from "react"
+import * as SliderPrimitive from "@radix-ui/react-slider"
 
-export const Slider: React.FC<SliderProps> = ({
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  onChange,
-  className = '',
-  showValue = true,
-  disabled = false,
-}) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(e.target.value);
-    onChange(newValue);
-  };
+import { cn } from "@/lib/utils"
 
-  return (
-    <div className={`flex flex-col space-y-2 ${className}`}>
-      {label && (
-        <label className="text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      )}
-      
-      <div className="flex items-center space-x-3">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={handleChange}
-          disabled={disabled}
-          className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((value - min) / (max - min)) * 100}%, #e5e7eb ${((value - min) / (max - min)) * 100}%, #e5e7eb 100%)`
-          }}
-        />
-        
-        {showValue && (
-          <span className="text-sm text-gray-600 min-w-[3rem] text-right">
-            {value}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}; 
+const Slider = React.forwardRef<
+  React.ElementRef<typeof SliderPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <SliderPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex w-full touch-none select-none items-center",
+      className
+    )}
+    {...props}
+  >
+    <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
+      <SliderPrimitive.Range className="absolute h-full bg-primary" />
+    </SliderPrimitive.Track>
+    <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+  </SliderPrimitive.Root>
+))
+Slider.displayName = SliderPrimitive.Root.displayName
+
+export { Slider }
