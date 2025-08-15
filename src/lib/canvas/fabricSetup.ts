@@ -173,7 +173,8 @@ export const updateCanvasFromState = async (
     return 0;
   });
   
-  for (const layer of sortedLayers) {
+  // Process non-text layers first
+  for (const layer of sortedLayers.filter(l => l.type !== 'text')) {
     try {
       const existingObject = existingObjectsMap.get(layer.id);
       
@@ -186,10 +187,6 @@ export const updateCanvasFromState = async (
         let fabricObjectPromise: Promise<Object>;
 
         switch (layer.type) {
-          case 'text':
-            const textObject = createTextLayer(layer);
-            fabricObjectPromise = Promise.resolve(textObject);
-            break;
           case 'image':
             fabricObjectPromise = createImageLayer(layer);
             break;
@@ -203,7 +200,7 @@ export const updateCanvasFromState = async (
 
         promises.push(
           fabricObjectPromise.then((fabricObject) => {
-            console.log('Adding fabric object to canvas:', fabricObject);
+            console.log('Adding non-text fabric object to canvas:', fabricObject);
             
             // Customize object selection styling
             fabricObject.set({
@@ -227,13 +224,81 @@ export const updateCanvasFromState = async (
               canvas.setActiveObject(fabricObject);
             }
             
-            console.log('Canvas objects after adding:', fabricObject);
+            console.log('Canvas objects after adding non-text:', fabricObject);
             canvas.renderAll();
           })
         );
       }
     } catch (error) {
       console.error(`Error updating layer ${layer.id}:`, error);
+    }
+  }
+
+  // Wait for all non-text objects to be added first
+  await Promise.all(promises);
+  
+  // Now add text layers last to ensure they're on top
+  for (const layer of sortedLayers.filter(l => l.type === 'text')) {
+    try {
+      const existingObject = existingObjectsMap.get(layer.id);
+      
+      if (existingObject) {
+        // Update existing object properties without recreating
+        updateExistingObject(existingObject, layer, canvas);
+      } else {
+        // Create new text object
+        const textObject = createTextLayer(layer);
+        
+        console.log('Adding text fabric object to canvas:', textObject);
+        
+        // Customize object selection styling
+        textObject.set({
+          borderColor: '#3b82f6',
+          cornerColor: '#3b82f6',
+          cornerStrokeColor: '#ffffff',
+          cornerSize: 8,
+          cornerStyle: 'circle',
+          transparentCorners: false,
+          borderDashArray: [5, 5],
+          borderScaleFactor: 2,
+          // Custom rotation handle styling
+          hasRotatingPoint: true,
+          rotatingPointOffset: 30,
+        });
+        
+        canvas.add(textObject);
+        
+        // Select layer if it's the selected one
+        if (layer.id === state.selectedLayerId) {
+          canvas.setActiveObject(textObject);
+        }
+        
+        console.log('Canvas objects after adding text:', textObject);
+        canvas.renderAll();
+      }
+    } catch (error) {
+      console.error(`Error updating text layer ${layer.id}:`, error);
+    }
+  }
+  
+  // Final step: ensure all text objects are at the top by reordering the canvas objects
+  // Use a more gentle approach that doesn't clear the canvas
+  const allObjects = canvas.getObjects();
+  const textObjects = allObjects.filter(obj => obj instanceof Text);
+  
+  // Instead of clearing, just reorder by moving text objects to the front
+  // Fabric.js renders objects in the order they're in the array, so we need to move text to the end
+  textObjects.forEach(textObj => {
+    // Remove and re-add the text object to move it to the end (top)
+    canvas.remove(textObj);
+    canvas.add(textObj);
+  });
+  
+  // Restore selection if needed
+  if (state.selectedLayerId) {
+    const selectedObj = allObjects.find(obj => obj.get('id') === state.selectedLayerId);
+    if (selectedObj) {
+      canvas.setActiveObject(selectedObj);
     }
   }
 
@@ -244,9 +309,6 @@ export const updateCanvasFromState = async (
       canvas.remove(obj);
     }
   });
-
-  // Wait for all objects to be added
-  await Promise.all(promises);
   
   console.log('Canvas objects after update:', canvas.getObjects());
   canvas.renderAll();

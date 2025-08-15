@@ -49,7 +49,7 @@ export const useCanvas = () => {
       tempSpan.style.fontStyle = textObject.fontStyle || 'normal';
       tempSpan.style.position = 'absolute';
       tempSpan.style.visibility = 'hidden';
-      tempSpan.style.whiteSpace = 'nowrap';
+      tempSpan.style.whiteSpace = 'pre-wrap'; // Support line breaks
       tempSpan.textContent = text;
       document.body.appendChild(tempSpan);
       
@@ -63,8 +63,10 @@ export const useCanvas = () => {
       input.style.position = 'fixed';
       input.style.left = `${left}px`;
       input.style.top = `${top}px`;
-      input.style.width = `${textWidth + 16}px`; // Add some padding
-      input.style.height = `${textHeight + 8}px`;
+      input.style.width = `${Math.max(textWidth + 20, 120)}px`; // Dynamic width based on content
+      input.style.height = `${Math.max(textHeight + 16, 60)}px`; // Dynamic height based on content
+      input.style.minWidth = '120px'; // Minimum width
+      input.style.minHeight = '60px'; // Minimum height
       input.style.fontFamily = fontFamily;
       input.style.fontSize = `${fontSize}px`;
       input.style.fontWeight = textObject.fontWeight || 'normal';
@@ -78,11 +80,14 @@ export const useCanvas = () => {
       input.style.backgroundColor = 'transparent'; // Completely transparent background
       input.style.zIndex = '9999';
       input.style.resize = 'none';
-      input.style.overflow = 'hidden';
+      input.style.overflow = 'visible'; // Allow natural expansion
       input.style.boxSizing = 'border-box';
-      input.style.whiteSpace = 'nowrap';
+      input.style.whiteSpace = 'pre-wrap'; // Allow line breaks and wrapping
       input.style.lineHeight = '1.2';
       input.style.caretColor = textObject.fill || '#000000'; // Match text color for cursor
+      input.style.transition = 'width 0.1s ease, height 0.1s ease'; // Smooth resizing animation
+      input.style.wordWrap = 'break-word'; // Force long words to break
+      input.style.overflowWrap = 'break-word'; // Modern CSS for word breaking
       
       // Hide the original text object temporarily
       textObject.set('visible', false);
@@ -140,17 +145,58 @@ export const useCanvas = () => {
       
       input.addEventListener('blur', handleComplete);
       
-      // Auto-resize as user types
+      // Auto-resize function to dynamically resize textarea as user types
       const autoResize = () => {
-        tempSpan.textContent = input.value;
-        document.body.appendChild(tempSpan);
-        const newWidth = tempSpan.offsetWidth;
-        document.body.removeChild(tempSpan);
+        console.log('Auto-resize triggered with text:', input.value);
         
-        input.style.width = `${newWidth + 16}px`;
+        // Create a fresh span for measurement
+        const measureSpan = document.createElement('span');
+        measureSpan.style.fontFamily = fontFamily;
+        measureSpan.style.fontSize = `${fontSize}px`;
+        measureSpan.style.fontWeight = textObject.fontWeight || 'normal';
+        measureSpan.style.fontStyle = textObject.fontStyle || 'normal';
+        measureSpan.style.position = 'absolute';
+        measureSpan.style.visibility = 'hidden';
+        measureSpan.style.whiteSpace = 'pre-wrap';
+        measureSpan.style.lineHeight = '1.2';
+        measureSpan.style.wordWrap = 'break-word';
+        measureSpan.style.overflowWrap = 'break-word';
+        measureSpan.textContent = input.value;
+        
+        // Add to DOM temporarily for measurement
+        document.body.appendChild(measureSpan);
+        
+        // Get the actual dimensions after text wrapping
+        const newWidth = measureSpan.offsetWidth;
+        const newHeight = measureSpan.offsetHeight;
+        
+        // Remove from DOM
+        document.body.removeChild(measureSpan);
+        
+        console.log('Measured dimensions:', { newWidth, newHeight, text: input.value });
+        
+        // Calculate new dimensions with padding and minimums
+        const targetWidth = Math.max(newWidth + 20, 120);
+        const targetHeight = Math.max(newHeight + 16, 60);
+        
+        // Update both width and height to fit content perfectly
+        input.style.width = `${targetWidth}px`;
+        input.style.height = `${targetHeight}px`;
+        
+        console.log('Updated textarea to:', { targetWidth, targetHeight });
       };
       
+      // Auto-resize as user types - connect to multiple events for immediate response
       input.addEventListener('input', autoResize);
+      input.addEventListener('keyup', autoResize);
+      input.addEventListener('keydown', autoResize); // Also resize on keydown for immediate feedback
+      
+      // Initial resize to match current content - immediate for professional feel
+      console.log('Performing immediate initial auto-resize...');
+      autoResize();
+      
+      // Force a re-render to ensure dimensions are applied immediately
+      input.offsetHeight; // Trigger reflow
       
     } catch (error) {
       console.error('Error creating inline text editor:', error);
