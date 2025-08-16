@@ -28,6 +28,7 @@ import { TextEnhancementSidebar } from "@/features/editor/components/text-enhanc
 
 
 import { SettingsSidebar } from "@/features/editor/components/settings-sidebar";
+import { useSaveStatus } from "@/features/editor/hooks/use-save-status";
 
 interface EditorProps {
   // No props needed for localStorage-based editor
@@ -35,6 +36,7 @@ interface EditorProps {
 
 export const Editor = () => {
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
+  const { status: saveStatus, startSaving, completeSave, errorSave } = useSaveStatus();
 
   const onClearSelection = useCallback(() => {
     if (selectionDependentTools.includes(activeTool)) {
@@ -49,6 +51,8 @@ export const Editor = () => {
     width: number,
     zoom: number,
   }) => {
+    startSaving();
+    
     try {
       localStorage.setItem('imageTextComposer', JSON.stringify({
         ...values,
@@ -57,13 +61,15 @@ export const Editor = () => {
       console.log('📦 Saved to localStorage:', { 
         width: values.width, 
         height: values.height, 
-        zoom: values.zoom.toFixed(2),
+        zoom: values.zoom ? values.zoom.toFixed(2) : 'undefined',
         objectCount: JSON.parse(values.json).objects?.length || 0
       });
+      completeSave();
     } catch (error) {
       console.error('Failed to save to localStorage:', error);
+      errorSave();
     }
-  }, []);
+  }, [startSaving, completeSave, errorSave]);
 
   const { init, editor } = useEditor({
     defaultState: undefined, // Will be loaded from localStorage
@@ -114,6 +120,7 @@ export const Editor = () => {
         editor={editor}
         activeTool={activeTool}
         onChangeActiveTool={onChangeActiveTool}
+        saveStatus={saveStatus}
       />
       <div className="absolute h-[calc(100%-68px)] w-full top-[68px] flex">
         <Sidebar

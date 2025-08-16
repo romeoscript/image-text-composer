@@ -14,6 +14,7 @@ import {
 
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { Logo } from "@/features/editor/components/logo";
+import { SaveIndicator, SaveStatus } from "@/features/editor/components/save-indicator";
 
 import { cn } from "@/lib/utils";
 import { Hint } from "@/components/hint";
@@ -30,12 +31,14 @@ interface NavbarProps {
   editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
+  saveStatus?: SaveStatus;
 };
 
 export const Navbar = ({
   editor,
   activeTool,
   onChangeActiveTool,
+  saveStatus = "idle",
 }: NavbarProps) => {
 
   const { openFilePicker } = useFilePicker({
@@ -110,12 +113,7 @@ export const Navbar = ({
           </Button>
         </Hint>
         <Separator orientation="vertical" className="mx-2" />
-        {/* localStorage autosave status - always shows as saved */}
-        <div className="flex items-center gap-x-2">
-          <div className="text-xs text-muted-foreground">
-            Autosaved to localStorage
-          </div>
-        </div>
+        <SaveIndicator status={saveStatus} />
         <div className="ml-auto flex items-center gap-x-4">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
