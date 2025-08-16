@@ -2,15 +2,63 @@ import { fabric } from "fabric";
 import { ITextboxOptions } from "fabric/fabric-impl";
 import * as material from "material-colors";
 
+/**
+ * JSON_KEYS - Properties that will be saved to localStorage and persisted across sessions
+ * 
+ * This comprehensive list ensures that all important styling, positioning, and text properties
+ * are saved when the canvas state is serialized to JSON.
+ * 
+ * Basic Object Properties: Position, size, scale, rotation
+ * Text Properties: Font settings, spacing, alignment, decorations  
+ * Visual Properties: Colors, strokes, opacity, shadows
+ * Control Properties: Selection, controls, borders, interaction
+ * Custom Properties: Lock states and other custom data
+ */
 export const JSON_KEYS = [
+  // Basic object properties
   "name",
-  "gradientAngle",
+  "left",
+  "top",
+  "width", 
+  "height",
+  "scaleX",
+  "scaleY",
+  "angle",
+  
+  // Text properties
+  "fontSize",
+  "fontFamily", 
+  "fontWeight",
+  "fontStyle",
+  "lineHeight",
+  "charSpacing",
+  "textAlign",
+  "underline",
+  "linethrough",
+  
+  // Visual properties
+  "fill",
+  "stroke",
+  "strokeWidth",
+  "strokeDashArray",
+  "opacity",
+  "shadow",
+  
+  // Control properties
   "selectable",
   "hasControls",
+  "hasBorders",
+  "evented",
+  
+  // Other properties
+  "gradientAngle",
   "linkData",
   "editable",
   "extensionType",
-  "extension"
+  "extension",
+  
+  // Custom properties
+  "_isLocked"
 ];
 
 export const filters = [

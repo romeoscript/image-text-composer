@@ -60,17 +60,31 @@ const buildEditor = ({
   setStrokeDashArray,
 }: BuildEditorProps): Editor => {
   const generateSaveOptions = () => {
-    const { width, height, left, top } = getWorkspace() as fabric.Rect;
-
-    return {
-      name: "Image",
-      format: "png",
-      quality: 1,
-      width,
-      height,
-      left,
-      top,
-    };
+    const workspace = getWorkspace() as fabric.Rect;
+    
+    if (workspace) {
+      const { width, height, left, top } = workspace;
+      return {
+        name: "Image",
+        format: "png",
+        quality: 1,
+        width,
+        height,
+        left,
+        top,
+      };
+    } else {
+      // Fallback to default dimensions if no workspace exists
+      return {
+        name: "Image",
+        format: "png",
+        quality: 1,
+        width: 800,
+        height: 600,
+        left: 0,
+        top: 0,
+      };
+    }
   };
 
   const savePng = () => {
@@ -327,12 +341,53 @@ const buildEditor = ({
       fabric.Image.fromURL(
         value,
         (image) => {
-          const workspace = getWorkspace();
-
-          image.scaleToWidth(workspace?.width || 0);
-          image.scaleToHeight(workspace?.height || 0);
-
-          addToCanvas(image);
+          // Get the original image dimensions
+          const imgWidth = image.width || 0;
+          const imgHeight = image.height || 0;
+          
+          if (imgWidth > 0 && imgHeight > 0) {
+            // Get the current workspace
+            const workspace = getWorkspace();
+            
+            if (workspace) {
+              // Resize the workspace to match the image dimensions
+              workspace.set({
+                width: imgWidth,
+                height: imgHeight
+              });
+              workspace.setCoords();
+              
+              // Scale image to fit the new workspace dimensions exactly
+              image.scaleToWidth(imgWidth);
+              image.scaleToHeight(imgHeight);
+              
+              // Position image at the center of the workspace
+              image.set({
+                left: imgWidth / 2,
+                top: imgHeight / 2
+              });
+              
+              // Add the image to canvas
+              addToCanvas(image);
+              
+              // Auto-zoom to fit the new workspace dimensions
+              autoZoom();
+              
+              // Save the new state
+              save();
+            } else {
+              // Fallback if no workspace exists
+              image.scaleToWidth(800);
+              image.scaleToHeight(600);
+              addToCanvas(image);
+            }
+          } else {
+            // Fallback if image dimensions are invalid
+            const workspace = getWorkspace();
+            image.scaleToWidth(workspace?.width || 0);
+            image.scaleToHeight(workspace?.height || 0);
+            addToCanvas(image);
+          }
         },
         {
           crossOrigin: "anonymous",
@@ -498,6 +553,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      save();
     },
     getActiveLineHeight: () => {
       const selectedObject = selectedObjects[0];
@@ -521,6 +577,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      save();
     },
     getActiveLetterSpacing: () => {
       const selectedObject = selectedObjects[0];
@@ -552,6 +609,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      save();
     },
     getActiveTextShadow: () => {
       const selectedObject = selectedObjects[0];
