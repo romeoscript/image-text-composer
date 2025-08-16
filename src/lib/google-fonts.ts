@@ -172,5 +172,6 @@ export const getFontWeights = (variants: string[]): number[] => {
   });
   
   // Sort weights and remove duplicates
-  return [...new Set(weights)].sort((a, b) => a - b);
+  const uniqueWeights = Array.from(new Set(weights));
+  return uniqueWeights.sort((a, b) => a - b);
 };

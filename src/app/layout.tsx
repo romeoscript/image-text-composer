@@ -5,7 +5,6 @@ import { Inter } from "next/font/google";
 
 import { Modals } from "@/components/modals";
 import { Toaster } from "@/components/ui/sonner";
-import { Providers } from "@/components/providers";
 
 import "./globals.css";
 
@@ -24,12 +23,10 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Providers>
-          <Toaster />
-          <Modals />
-          {/* SubscriptionAlert disabled - subscription features removed */}
-          {children}
-        </Providers>
+        <Toaster />
+        <Modals />
+        {/* SubscriptionAlert disabled - subscription features removed */}
+        {children}
       </body>
     </html>
   );
