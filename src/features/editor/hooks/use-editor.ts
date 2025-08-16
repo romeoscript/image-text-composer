@@ -350,25 +350,30 @@ const buildEditor = ({
             const workspace = getWorkspace();
             
             if (workspace) {
-              // Resize the workspace to match the image dimensions
+              // Store current workspace position before resizing
+              const currentLeft = workspace.left || 0;
+              const currentTop = workspace.top || 0;
+              
+              // Resize the workspace to match the image dimensions exactly
               workspace.set({
                 width: imgWidth,
-                height: imgHeight
+                height: imgHeight,
+                left: currentLeft,
+                top: currentTop
               });
               workspace.setCoords();
               
-              // Scale image to fit the new workspace dimensions exactly
-              image.scaleToWidth(imgWidth);
-              image.scaleToHeight(imgHeight);
-              
-              // Position image at the center of the workspace
+              // Position image at the workspace position with 1:1 scale (no scaling needed)
               image.set({
-                left: imgWidth / 2,
-                top: imgHeight / 2
+                left: currentLeft,
+                top: currentTop,
+                scaleX: 1,
+                scaleY: 1
               });
               
               // Add the image to canvas
-              addToCanvas(image);
+              canvas.add(image);
+              canvas.setActiveObject(image);
               
               // Auto-zoom to fit the new workspace dimensions
               autoZoom();
@@ -376,17 +381,32 @@ const buildEditor = ({
               // Save the new state
               save();
             } else {
-              // Fallback if no workspace exists
-              image.scaleToWidth(800);
-              image.scaleToHeight(600);
-              addToCanvas(image);
+              // Fallback if no workspace exists - use image dimensions
+              image.set({
+                left: 0,
+                top: 0,
+                scaleX: 1,
+                scaleY: 1
+              });
+              canvas.add(image);
+              canvas.setActiveObject(image);
             }
           } else {
-            // Fallback if image dimensions are invalid
+            // Fallback if image dimensions are invalid - use default scaling
             const workspace = getWorkspace();
-            image.scaleToWidth(workspace?.width || 0);
-            image.scaleToHeight(workspace?.height || 0);
-            addToCanvas(image);
+            if (workspace) {
+              const workspaceWidth = workspace.width || 800;
+              const workspaceHeight = workspace.height || 600;
+              
+              image.scaleToWidth(workspaceWidth);
+              image.scaleToHeight(workspaceHeight);
+              image.set({
+                left: 0,
+                top: 0
+              });
+            }
+            canvas.add(image);
+            canvas.setActiveObject(image);
           }
         },
         {
@@ -1143,9 +1163,10 @@ export const useEditor = ({
         cornerStrokeColor: "#3b82f6",
       });
 
+      // Create initial workspace with container dimensions
       const initialWorkspace = new fabric.Rect({
-        width: initialWidth.current,
-        height: initialHeight.current,
+        width: initialContainer.offsetWidth,
+        height: initialContainer.offsetHeight,
         name: "clip",
         fill: "white",
         selectable: false,
@@ -1171,17 +1192,239 @@ export const useEditor = ({
         const savedData = localStorage.getItem('imageTextComposer');
         if (savedData) {
           const parsedData = JSON.parse(savedData);
+          console.log('🔍 Loading saved data:', { 
+            hasJson: !!parsedData.json, 
+            width: parsedData.width, 
+            height: parsedData.height, 
+            zoom: parsedData.zoom,
+            zoomType: typeof parsedData.zoom 
+          });
           if (parsedData.json) {
             // Load the saved canvas state
             initialCanvas.loadFromJSON(parsedData.json, () => {
-              // Update canvas dimensions if saved
-              if (parsedData.width && parsedData.height) {
-                initialCanvas.setDimensions({
-                  width: parsedData.width,
-                  height: parsedData.height,
-                });
-              }
-              autoZoom();
+              // Simulate user interaction immediately to fix rendering issues
+              setTimeout(() => {
+                try {
+                  // Force canvas re-render (simulates clicking buttons)
+                  initialCanvas.renderAll();
+                  initialCanvas.requestRenderAll();
+                  
+                  // Simulate a tiny zoom change (like opening dev tools)
+                  const currentZoom = initialCanvas.getZoom();
+                  initialCanvas.setZoom(currentZoom + 0.001);
+                  initialCanvas.setZoom(currentZoom);
+                  
+                  // Trigger window resize event (often fixes canvas issues)
+                  window.dispatchEvent(new Event('resize'));
+                  
+                  console.log('🔍 Simulated interaction to fix canvas rendering');
+                } catch (error) {
+                  console.error('Error simulating interaction:', error);
+                }
+              }, 10);
+              
+              // Use setTimeout to ensure canvas is fully ready before manipulation
+              setTimeout(() => {
+                try {
+                  // Find and resize the workspace to match saved dimensions
+                  if (parsedData.width && parsedData.height) {
+                    const workspace = initialCanvas
+                      .getObjects()
+                      .find((object) => object.name === "clip") as fabric.Rect;
+                    
+                    if (workspace) {
+                      // Resize the workspace to match saved dimensions
+                      workspace.set({
+                        width: parsedData.width,
+                        height: parsedData.height
+                      });
+                      workspace.setCoords();
+                      
+                      // Center the workspace
+                      initialCanvas.centerObject(workspace);
+                      
+                      // Update the clip path
+                      initialCanvas.clipPath = workspace;
+                      
+                      // Force a render to ensure everything is updated
+                      initialCanvas.requestRenderAll();
+                    }
+                  }
+                  
+                  // Restore the saved zoom level AFTER workspace setup
+                  if (parsedData.zoom && typeof parsedData.zoom === 'number') {
+                    // Use a longer delay to ensure canvas is fully stable
+                    setTimeout(() => {
+                      try {
+                        const center = initialCanvas.getCenter();
+                        initialCanvas.zoomToPoint(
+                          new fabric.Point(center.left, center.top),
+                          parsedData.zoom
+                        );
+                        console.log(`🔍 Restored zoom level: ${Math.round(parsedData.zoom * 100)}% (saved value: ${parsedData.zoom})`);
+                      } catch (error) {
+                        console.error('Error restoring zoom level:', error);
+                      }
+                    }, 200);
+                  } else {
+                    console.log(`🔍 No valid zoom value found in saved data:`, parsedData.zoom);
+                  }
+                  
+                  // Ensure the image fills the entire workspace dimensions
+                  // This ensures the workspace and image have the same dimensions
+                  setTimeout(() => {
+                    try {
+                      const workspace = initialCanvas
+                        .getObjects()
+                        .find((object) => object.name === "clip") as fabric.Rect;
+                      
+                      if (workspace && parsedData.width && parsedData.height) {
+                        // Keep the saved workspace dimensions
+                        const workspaceWidth = parsedData.width;
+                        const workspaceHeight = parsedData.height;
+                        
+                        // Set canvas size to accommodate the workspace with some padding
+                        const canvasWidth = Math.max(workspaceWidth + 100, initialContainer.offsetWidth);
+                        const canvasHeight = Math.max(workspaceHeight + 100, initialContainer.offsetHeight);
+                        
+                        initialCanvas.setWidth(canvasWidth);
+                        initialCanvas.setHeight(canvasHeight);
+                        
+                        // Ensure workspace has the correct dimensions
+                        workspace.set({
+                          width: workspaceWidth,
+                          height: workspaceHeight
+                        });
+                        workspace.setCoords();
+                        
+                        // Center the workspace in the canvas
+                        initialCanvas.centerObject(workspace);
+                        
+                        // Update the clip path
+                        initialCanvas.clipPath = workspace;
+                        
+                        // Scale all image objects to fit within the workspace while preserving aspect ratio
+                        const imageObjects = initialCanvas.getObjects().filter(obj => 
+                          obj.type === 'image' && obj.name !== 'clip'
+                        );
+                        
+                        console.log(`🔍 Found ${imageObjects.length} image objects to resize`);
+                        
+                        imageObjects.forEach((imageObj, index) => {
+                          console.log(`🔍 Image ${index + 1}:`, {
+                            type: imageObj.type,
+                            left: imageObj.left,
+                            top: imageObj.top,
+                            width: imageObj.width,
+                            height: imageObj.height,
+                            scaleX: imageObj.scaleX,
+                            scaleY: imageObj.scaleY
+                          });
+                          
+                          if (imageObj.type === 'image') {
+                            const fabricImage = imageObj as fabric.Image;
+                            
+                            // Calculate scale to fit image within workspace while preserving aspect ratio
+                            const imageAspectRatio = fabricImage.width! / fabricImage.height!;
+                            const workspaceAspectRatio = workspaceWidth / workspaceHeight;
+                            
+                            let scaleX, scaleY;
+                            
+                            if (imageAspectRatio > workspaceAspectRatio) {
+                              // Image is wider than workspace - fit to width
+                              scaleX = workspaceWidth / fabricImage.width!;
+                              scaleY = scaleX;
+                            } else {
+                              // Image is taller than workspace - fit to height
+                              scaleY = workspaceHeight / fabricImage.height!;
+                              scaleX = scaleY;
+                            }
+                            
+                            // Center the image in the workspace
+                            const scaledWidth = fabricImage.width! * scaleX;
+                            const scaledHeight = fabricImage.height! * scaleY;
+                            const left = (workspaceWidth - scaledWidth) / 2;
+                            const top = (workspaceHeight - scaledHeight) / 2;
+                            
+                            // Apply scaling and positioning
+                            fabricImage.set({
+                              left: left,
+                              top: top,
+                              scaleX: scaleX,
+                              scaleY: scaleY,
+                              originX: 'left',
+                              originY: 'top'
+                            });
+                            fabricImage.setCoords();
+                            
+                            console.log(`🔍 Image ${index + 1} scaled to fit workspace:`, {
+                              originalWidth: fabricImage.width,
+                              originalHeight: fabricImage.height,
+                              scaleX: scaleX,
+                              scaleY: scaleY,
+                              left: left,
+                              top: top,
+                              scaledWidth: scaledWidth,
+                              scaledHeight: scaledHeight
+                            });
+                          }
+                        });
+                        
+                        // Force a render
+                        initialCanvas.requestRenderAll();
+                        
+                        // Apply zoom to fit the workspace in the viewport
+                        setTimeout(() => {
+                          try {
+                            const center = initialCanvas.getCenter();
+                            const zoomRatio = 0.9; // Slightly higher to ensure workspace fits
+                            
+                            // Calculate scale to fit the workspace in the viewport
+                            const scale = fabric.util.findScaleToFit(workspace, {
+                              width: initialContainer.offsetWidth,
+                              height: initialContainer.offsetHeight,
+                            });
+                            
+                            const zoom = zoomRatio * scale;
+                            
+                            // Apply zoom and center
+                            initialCanvas.setViewportTransform(fabric.iMatrix.concat());
+                            initialCanvas.zoomToPoint(new fabric.Point(center.left, center.top), zoom);
+                            
+                            // Center the viewport on the workspace
+                            const workspaceCenter = workspace.getCenterPoint();
+                            const viewportTransform = initialCanvas.viewportTransform;
+                            
+                            if (viewportTransform) {
+                              viewportTransform[4] = initialContainer.offsetWidth / 2 - workspaceCenter.x * viewportTransform[0];
+                              viewportTransform[5] = initialContainer.offsetHeight / 2 - workspaceCenter.y * viewportTransform[3];
+                              initialCanvas.setViewportTransform(viewportTransform);
+                            }
+                            
+                            initialCanvas.requestRenderAll();
+                            console.log(`🔍 Image workspace set to ${workspaceWidth}x${workspaceHeight}, canvas to ${canvasWidth}x${canvasHeight}`);
+                            
+                            // Mark that we've loaded from localStorage to prevent autoZoom interference
+                            (initialCanvas as any)._loadedFromLocalStorage = true;
+                            
+                            // Clear the flag after a delay to allow future autoZoom calls
+                            setTimeout(() => {
+                              (initialCanvas as any)._loadedFromLocalStorage = false;
+                              console.log('🔍 Re-enabled autoZoom after localStorage load');
+                            }, 2000);
+                          } catch (error) {
+                            console.error('Error applying zoom after workspace setup:', error);
+                          }
+                        }, 50);
+                      }
+                    } catch (error) {
+                      console.error('Error setting up image workspace:', error);
+                    }
+                  }, 100);
+                } catch (error) {
+                  console.error('Error restoring workspace dimensions:', error);
+                }
+              }, 50);
             });
             
             // Set the saved state as initial
@@ -1203,6 +1446,79 @@ export const useEditor = ({
       );
       canvasHistory.current = [currentState];
       setHistoryIndex(0);
+      
+      // Ensure default workspace also occupies full container dimensions
+      setTimeout(() => {
+        try {
+          const width = initialContainer.offsetWidth;
+          const height = initialContainer.offsetHeight;
+          
+          // Resize canvas to match container
+          initialCanvas.setWidth(width);
+          initialCanvas.setHeight(height);
+          
+          // Find and resize the default workspace
+          const workspace = initialCanvas
+            .getObjects()
+            .find((object) => object.name === "clip") as fabric.Rect;
+          
+          if (workspace) {
+            // Resize workspace to match container dimensions
+            workspace.set({
+              width: width,
+              height: height
+            });
+            workspace.setCoords();
+            
+            // Center the workspace
+            initialCanvas.centerObject(workspace);
+            
+            // Update the clip path
+            initialCanvas.clipPath = workspace;
+            
+            // Force a render
+            initialCanvas.requestRenderAll();
+            
+            // Apply appropriate zoom to fit the workspace
+            const center = initialCanvas.getCenter();
+            const zoomRatio = 0.9; // Slightly higher to ensure workspace fits
+            
+            const scale = fabric.util.findScaleToFit(workspace, {
+              width: width,
+              height: height,
+            });
+            
+            const zoom = zoomRatio * scale;
+            
+            initialCanvas.setViewportTransform(fabric.iMatrix.concat());
+            initialCanvas.zoomToPoint(new fabric.Point(center.left, center.top), zoom);
+            
+            // Center the viewport on the workspace
+            const workspaceCenter = workspace.getCenterPoint();
+            const viewportTransform = initialCanvas.viewportTransform;
+            
+            if (viewportTransform) {
+              viewportTransform[4] = width / 2 - workspaceCenter.x * viewportTransform[0];
+              viewportTransform[5] = height / 2 - workspaceCenter.y * viewportTransform[3];
+              initialCanvas.setViewportTransform(viewportTransform);
+            }
+            
+            initialCanvas.requestRenderAll();
+            console.log(`🔍 Set default workspace to full container dimensions: ${width}x${height}`);
+            
+            // Mark that we've set up the default workspace to prevent autoZoom interference
+            (initialCanvas as any)._loadedFromLocalStorage = true;
+            
+            // Clear the flag after a delay to allow future autoZoom calls
+            setTimeout(() => {
+              (initialCanvas as any)._loadedFromLocalStorage = false;
+              console.log('🔍 Re-enabled autoZoom after default workspace setup');
+            }, 2000);
+          }
+        } catch (error) {
+          console.error('Error setting default workspace dimensions:', error);
+        }
+      }, 100);
     },
     [
       canvasHistory, // No need, this is from useRef
