@@ -24,6 +24,12 @@ export const JSON_KEYS = [
   "scaleX",
   "scaleY",
   "angle",
+  "originX",
+  "originY",
+  "flipX",
+  "flipY",
+  "skewX", 
+  "skewY",
   
   // Text properties
   "fontSize",
@@ -43,12 +49,20 @@ export const JSON_KEYS = [
   "strokeDashArray",
   "opacity",
   "shadow",
+  "visible",
   
   // Control properties
   "selectable",
   "hasControls",
   "hasBorders",
   "evented",
+  "moveCursor",
+  "hoverCursor",
+  
+  // Image-specific properties
+  "src",
+  "crossOrigin",
+  "filters",
   
   // Other properties
   "gradientAngle",
@@ -58,7 +72,8 @@ export const JSON_KEYS = [
   "extension",
   
   // Custom properties
-  "_isLocked"
+  "_isLocked",
+  "_originalPosition"
 ];
 
 export const filters = [

@@ -47,12 +47,19 @@ export const Editor = () => {
     json: string,
     height: number,
     width: number,
+    zoom: number,
   }) => {
     try {
       localStorage.setItem('imageTextComposer', JSON.stringify({
         ...values,
         timestamp: Date.now()
       }));
+      console.log('📦 Saved to localStorage:', { 
+        width: values.width, 
+        height: values.height, 
+        zoom: values.zoom.toFixed(2),
+        objectCount: JSON.parse(values.json).objects?.length || 0
+      });
     } catch (error) {
       console.error('Failed to save to localStorage:', error);
     }
