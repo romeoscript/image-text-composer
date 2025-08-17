@@ -18,8 +18,8 @@ export const ImageUpload = ({ editor, onClose }: ImageUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileSelect = (file: File) => {
-    if (!file || !file.type.startsWith('image/')) {
-      alert('Please select a valid image file');
+    if (!file || file.type !== 'image/png') {
+      alert('Please select a PNG image file only');
       return;
     }
 
@@ -65,12 +65,12 @@ export const ImageUpload = ({ editor, onClose }: ImageUploadProps) => {
     setIsDragging(false);
     
     const files = Array.from(e.dataTransfer.files);
-    const imageFile = files.find(file => file.type.startsWith('image/'));
+    const pngFile = files.find(file => file.type === 'image/png');
     
-    if (imageFile) {
-      handleFileSelect(imageFile);
+    if (pngFile) {
+      handleFileSelect(pngFile);
     } else {
-      alert('Please drop a valid image file');
+      alert('Please drop a PNG image file only');
     }
   };
 
@@ -83,7 +83,7 @@ export const ImageUpload = ({ editor, onClose }: ImageUploadProps) => {
       <div className="text-center">
         <h3 className="text-lg font-semibold mb-2">Upload Image</h3>
         <p className="text-sm text-muted-foreground">
-          Upload an image from your device to add to the canvas
+          Upload a PNG image from your device to add to the canvas
         </p>
       </div>
 
@@ -104,7 +104,7 @@ export const ImageUpload = ({ editor, onClose }: ImageUploadProps) => {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png"
           onChange={handleFileInputChange}
           className="hidden"
         />
@@ -123,7 +123,7 @@ export const ImageUpload = ({ editor, onClose }: ImageUploadProps) => {
               {isUploading ? 'Uploading...' : 'Click to upload or drag & drop'}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              PNG, JPG, GIF up to 10MB
+              PNG files only, up to 10MB
             </p>
           </div>
         </div>

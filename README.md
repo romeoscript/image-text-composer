@@ -90,25 +90,19 @@ src/
 
 ### Technology Choices
 
-#### **Fabric.js**
-- **Why**: Industry-standard canvas library with rich object manipulation
-- **Pros**: Excellent transform controls, event handling, and text support
-- **Trade-offs**: Larger bundle size, but provides professional-grade editing
+#### **Fabric.js over Konva**
+- **Why**: After evaluating both Fabric.js and Konva, Fabric.js provided superior flexibility for text editing requirements
+- **Konva Limitations**: While Konva is excellent for graphics and animations, it lacks the sophisticated text manipulation needed for this project. Fabric.js offers better
+- **Pros**: Excellent transform controls, comprehensive text editing, robust event handling
+- **Trade-offs**: Larger bundle size than Konva, but essential for professional text editing features
 
-#### **localStorage Persistence**
-- **Why**: Client-side persistence without backend complexity
-- **Pros**: Instant saves, works offline, simple implementation
-- **Trade-offs**: Limited to single device, storage size limits
+
 
 #### **React Hooks Architecture**
 - **Why**: Clean separation of concerns and reusable logic
 - **Pros**: Testable, maintainable, follows React best practices
 - **Trade-offs**: Slightly more complex than component-based state
 
-#### **TypeScript**
-- **Why**: Type safety and better developer experience
-- **Pros**: Catch errors early, excellent IDE support, self-documenting code
-- **Trade-offs**: Additional build complexity, learning curve
 
 ## 🎯 Bonus Features Implemented
 
