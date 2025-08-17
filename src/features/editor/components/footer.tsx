@@ -1,4 +1,4 @@
-import { Minimize, ZoomIn, ZoomOut } from "lucide-react";
+import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 
 import { Editor } from "@/features/editor/types";
 
@@ -15,10 +15,10 @@ export const Footer = ({ editor }: FooterProps) => {
   
   return (
     <footer className="h-[52px] border-t bg-white w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-1 shrink-0 px-4 flex-row-reverse">
-      <Hint label="Reset Canvas" side="top" sideOffset={10}>
+      <Hint label="Reset to Blank Canvas" side="top" sideOffset={10}>
         <Button
           onClick={() => {
-            if (confirm('Are you sure you want to reset the canvas? This will clear all your work.')) {
+            if (confirm('Are you sure you want to reset to a blank canvas? This will clear all your work and cannot be undone.')) {
               editor?.clearLocalStorage();
             }
           }}
@@ -26,7 +26,7 @@ export const Footer = ({ editor }: FooterProps) => {
           variant="ghost"
           className="h-full"
         >
-          <Minimize className="size-4" />
+          <RotateCcw className="size-4" />
         </Button>
       </Hint>
       <Hint label="Zoom in" side="top" sideOffset={10}>
